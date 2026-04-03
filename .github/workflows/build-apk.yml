@@ -1,0 +1,33 @@
+name: Build Android APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with: { distribution: 'zulu', java-version: '17' }
+      - name: Install Dependencies
+        run: npm install
+      - name: Build Web App
+        run: npm run build
+      - name: Sync Capacitor
+        run: |
+          # Android folder generate karein
+          npx cap add android || echo "Android folder exists"
+          # Web assets ko android/app/src/main/assets/public mein copy karein
+          npx cap sync android
+      - name: Build APK
+        working-directory: ./android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MotoMate-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
