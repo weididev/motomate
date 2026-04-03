@@ -157,8 +157,7 @@ export default function App() {
     const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `motomate_backup.json`; a.click();
   };
-
-return (
+  return (
     <div className={cn("min-h-screen font-sans flex flex-col items-center justify-center", isDarkMode ? "bg-[#0A0A0C] text-white" : "bg-[#F4F7FA] text-gray-900")}>
       <div className={cn("w-full max-w-[430px] sm:rounded-[3.5rem] sm:shadow-2xl sm:border-[12px] h-[100dvh] sm:h-[880px] overflow-hidden flex flex-col relative", isDarkMode ? "bg-[#121216] border-[#1E1E24]" : "bg-white border-gray-900")}>
         <header className="relative z-10 px-8 py-6 flex justify-between items-center">
@@ -179,6 +178,7 @@ return (
                       <div><p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.3em] mb-1">Active Unit</p><div className="flex items-center gap-2"><h2 className="text-3xl font-black italic tracking-tighter">{bike?.name}</h2><div className="flex items-center gap-1.5"><button onClick={() => setShowEditBikeModal(true)} className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20"><Settings className="w-4 h-4" /></button><button onClick={() => setShowAddModal(true)} className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20"><Plus className="w-4 h-4" /></button></div></div><div className="flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 w-fit"><Clock className="w-3 h-3 text-orange-500" /><span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Age: {bikeAge}</span></div></div>
                       <div className="bg-orange-600/10 p-3 rounded-2xl"><Gauge className="w-6 h-6 text-orange-600" /></div>
                     </div>
+                    <div className="grid grid-cols-2 gap-8"><div><p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Total Distance</p><p className="text-3xl font-black tracking-tighter">{bike?.odometer} <span className="text-sm font-normal opacity-50">KM</span></p></div><div><p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Reg No.</p><p className="text-xl font-black tracking-tighter opacity-80">{bike?.registrationNumber}</p></div></div>
                   </div>
                   <div className="p-8 rounded-[2.5rem] bg-[#1E1E24]/80 space-y-6"><h3 className="text-xs font-bold text-orange-500 uppercase tracking-[0.3em]">Data Management</h3><button onClick={handleShareData} className="w-full p-5 rounded-2xl bg-white/5 flex items-center justify-between"><div className="flex items-center gap-4"><Share2 className="w-5 h-5 text-orange-500" /><div><p className="text-sm font-bold">Share Backup</p></div></div><ChevronRight className="w-5 h-5 opacity-30" /></button></div>
                 </motion.div>
@@ -202,4 +202,4 @@ return (
       </div>
     </div>
   );
-                                                                          }
+                        }
