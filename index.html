@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>MotoMate</title>
+    
+    <!-- CRASH REPORTER: Yeh white screen ko rok kar asli error dikhayega -->
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        document.body.innerHTML = 
+          '<div style="background:#ff0000; color:#fff; padding:20px; height:100vh; overflow:auto; font-family:sans-serif; box-sizing:border-box;">' +
+            '<h3 style="margin-top:0;">App Crashed! 🚨</h3>' +
+            '<p><b>Error:</b> ' + message + '</p>' +
+            '<p><b>File:</b> ' + source + ' (Line: ' + lineno + ')</p>' +
+            '<p><b>Details:</b> ' + (error ? error.stack : 'N/A') + '</p>' +
+            '<p style="margin-top:20px; font-size:12px;">Bhai, yeh error copy karke mujhe (AI ko) bata do, main abhi fix karta hu!</p>' +
+          '</div>';
+        return true;
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
