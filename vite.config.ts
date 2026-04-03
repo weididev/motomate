@@ -8,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 export default defineConfig({
+  base: './', // <-- YEH LINE WHITE SCREEN FIX KAREGI (Android ke liye zaroori hai)
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
