@@ -1,11 +1,8 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import { useState, useMemo, useEffect } from 'react';
 import { 
   Bike, Settings, Fuel, Wrench, Download, Plus, ChevronRight, 
   LayoutDashboard, FileText, Calculator, History, Info, Sun, Moon, 
   Upload, Database, Zap, Gauge, Droplets, Clock, MapPin, Share2, 
-  CheckCircle2, AlertCircle, X, TrendingUp, Navigation 
+  CheckCircle2, AlertCircle, X, TrendingUp, Navigation, Activity // <--- Yahan 'Activity' add kiya hai
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
