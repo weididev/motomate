@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { Gauge, Play, Square, MapPin, Clock } from 'lucide-react';
 import { Bike, ActiveTrip } from '../types';
