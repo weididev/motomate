@@ -222,8 +222,7 @@ export default function App() {
 
   const filteredLogs = useMemo(() => {
     return allLogs.filter(log => {
-      const matchesType = logFilter === 'all' || log.category === logFilter;
-      return matchesType;
+      return logFilter === 'all' || log.category === logFilter;
     });
   }, [allLogs, logFilter]);
 
@@ -475,27 +474,26 @@ export default function App() {
   const handleShareData = async () => {
     try {
       const data = { bike, maintenance, fuel, accessories };
-      const text = JSON.stringify(data, null, 2);
-      const fileName = 'motomate_backup.json';
-      const file = new File([text], fileName, { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const file = new File([blob], 'motomate_backup.json', { type: 'application/json' });
       
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'MotoMate Backup',
-          text: 'Here is my MotoMate backup file.'
+          text: 'MotoMate backup file'
         });
         showToast('Backup shared successfully!', 'success');
       } else {
-        const url = URL.createObjectURL(file);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName;
+        a.download = 'motomate_backup.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('Backup downloaded successfully!', 'success');
+        showToast('Sharing not supported, downloaded instead.', 'success');
       }
     } catch (err: any) {
       console.error('Share failed:', err);
@@ -953,7 +951,6 @@ export default function App() {
           )}
         </AnimatePresence>
         
-        {/* Toast Notification */}
         <AnimatePresence>
           {toast && (
             <motion.div
@@ -995,4 +992,4 @@ export default function App() {
       </div>
     </div>
   );
-                        }
+}
