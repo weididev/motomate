@@ -184,4 +184,4 @@ export function Speedometer({
       </div>
     </div>
   );
-}
+            }
