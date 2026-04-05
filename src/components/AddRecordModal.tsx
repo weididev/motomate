@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { X } from 'lucide-react';
+import { Fuel, Wrench, Plus, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn } from '@/src/lib/utils';
 import { Bike, FuelRecord, MaintenanceRecord, AccessoryRecord } from '../types';
 
 interface AddRecordModalProps {
@@ -40,12 +40,13 @@ export function AddRecordModal({
   });
 
   const petrolStations = [
-    "Indian Oil", "HP Petrol Pump", "Bharat Petroleum", "Reliance", "Shell", "Nayara"
+    "Indian Oil", "HP Petrol Pump", "Bharat Petroleum", "Reliance", "Nayara"
   ];
 
   const handleAdd = () => {
     const id = Math.random().toString(36).substr(2, 9);
     
+    // Update global odometer if a higher value is entered
     const enteredOdo = Math.round(parseFloat(formData.odometer) * 10) / 10;
     if (!isNaN(enteredOdo) && enteredOdo > (bike?.odometer || 0)) {
       setBike(prev => prev ? { ...prev, odometer: enteredOdo } : null);
