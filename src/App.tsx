@@ -471,29 +471,45 @@ export default function App() {
     }
   };
 
+  const lastFuelPrice = useMemo(() => {
+    const regularFuel = fuel.filter(f => !f.isDump);
+    if (regularFuel.length === 0) return 0;
+    const lastRefill = [...regularFuel].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    return lastRefill.cost / lastRefill.liters;
+  }, [fuel]);
+
   const handleShareData = async () => {
     try {
-      const data = { bike, maintenance, fuel, accessories };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const file = new File([blob], 'motomate_backup.json', { type: 'application/json' });
+      const data = { bike, maintenance, fuel, accessories, trips };
+      const jsonString = JSON.stringify(data, null, 2);
+      const fileName = 'motomate_backup.json';
       
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const file = new File([blob], fileName, { type: 'application/json' });
+
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'MotoMate Backup',
-          text: 'MotoMate backup file'
+          text: 'My MotoMate data backup file.'
         });
         showToast('Backup shared successfully!', 'success');
+      } else if (navigator.share) {
+        await navigator.share({
+          title: 'MotoMate Backup',
+          text: jsonString
+        });
+        showToast('Backup shared as text!', 'success');
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'motomate_backup.json';
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('Sharing not supported, downloaded instead.', 'success');
+        showToast('Sharing not supported, file downloaded.', 'success');
       }
     } catch (err: any) {
       console.error('Share failed:', err);
@@ -758,6 +774,7 @@ export default function App() {
                                 if (data.maintenance) setMaintenance(data.maintenance);
                                 if (data.fuel) setFuel(data.fuel);
                                 if (data.accessories) setAccessories(data.accessories);
+                                if (data.trips) setTrips(data.trips);
                                 showToast('Data imported successfully!', 'success');
                               } catch (err) {
                                 showToast('Failed to import data. Invalid file format.', 'error');
@@ -938,6 +955,8 @@ export default function App() {
               setActiveTrip={setActiveTrip}
               setShowEndTripModal={setShowEndTripModal}
               isDarkMode={isDarkMode}
+              fuelEfficiency={fuelEfficiency}
+              lastFuelPrice={lastFuelPrice}
             />
           )}
           {showEditBikeModal && bike && (
@@ -992,4 +1011,4 @@ export default function App() {
       </div>
     </div>
   );
-}
+                            }
