@@ -3,30 +3,37 @@ export interface Bike {
   name: string;
   company: string;
   model: string;
+  year: number;
   registrationNumber: string;
   purchaseDate: string;
-  odometer: number;
+  engineNumber?: string;
+  chassisNumber?: string;
+  odometer: number; // Supports decimals (e.g., 7260.3)
+  price?: number;
+  registrationValidity?: string;
   fuelCapacity: number;
-  year: number;
-}
-
-export interface FuelRecord {
-  id: string;
-  date: string;
-  cost: number;
-  liters: number;
-  odometer: number;
-  stationName: string;
-  isDump?: boolean;
+  manualServiceKm?: number;
+  manualServiceDate?: string;
 }
 
 export interface MaintenanceRecord {
   id: string;
   type: string;
   date: string;
+  odometer: number;
+  cost: number;
+  notes?: string;
+}
+
+export interface FuelRecord {
+  id: string;
+  date: string;
+  liters: number;
   cost: number;
   odometer: number;
-  notes?: string;
+  stationName?: string;
+  efficiency?: number; // km/l for this refill
+  isDump?: boolean;
 }
 
 export interface AccessoryRecord {
@@ -50,4 +57,16 @@ export interface TripRecord {
 export interface ActiveTrip {
   startTime: string;
   startOdometer: number;
+}
+
+export interface ServiceChecklistItem {
+  id: string;
+  text: string;
+  date: string;
+  isCompleted: boolean;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
 }
