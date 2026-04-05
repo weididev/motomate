@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { X, Clock, Gauge } from 'lucide-react';
-import { differenceInMinutes } from 'date-fns';
-import { cn } from '../lib/utils';
+import { X, Check, Navigation, Clock, Gauge } from 'lucide-react';
+import { format, differenceInMinutes } from 'date-fns';
+import { cn } from '@/src/lib/utils';
 import { Bike, ActiveTrip, TripRecord } from '../types';
 
 interface EndTripModalProps {
@@ -31,7 +31,7 @@ export function EndTripModal({
 
   const currentOdo = bike?.odometer || 0;
   const odoStr = Math.floor(currentOdo).toString();
-  const initialOdoPrefix = odoStr.slice(0, -2);
+  const initialOdoPrefix = odoStr.slice(0, -2); // Pre-fill all but last 2 digits
   
   useEffect(() => {
     if (inputMode === 'odo' && odoValue === '') {
@@ -194,4 +194,4 @@ export function EndTripModal({
       </motion.div>
     </motion.div>
   );
-                }
+  }
