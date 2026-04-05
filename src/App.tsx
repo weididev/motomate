@@ -3,9 +3,9 @@ import 'jspdf-autotable';
 import { useState, useMemo, useEffect } from 'react';
 import { 
   Bike, Settings, Fuel, Wrench, Download, Github, Plus, ChevronRight, 
-  Calendar, Activity, ShieldCheck, Bell, Smartphone, LayoutDashboard, 
-  FileText, Calculator, History, PhoneCall, Info, Sun, Moon, Upload, 
-  Database, Zap, Gauge, Droplets, Clock, MapPin, Share2, CheckCircle2, 
+  Calendar, Activity, ShieldCheck, Bell, Smartphone, LayoutDashboard,
+  FileText, Calculator, History, PhoneCall, Info, Sun, Moon, Upload,
+  Database, Zap, Gauge, Droplets, Clock, MapPin, Share2, CheckCircle2,
   AlertCircle, X, Search, Filter, TrendingUp, BarChart2, CalendarDays, Navigation
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,7 +14,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell
 } from 'recharts';
 import { format, differenceInDays, addMonths, differenceInMinutes, startOfMonth, intervalToDuration } from 'date-fns';
-import { cn } from './lib/utils';
+import { cn } from '@/src/lib/utils';
 import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from './types';
 import { Speedometer } from './components/Speedometer';
 import { AddRecordModal } from './components/AddRecordModal';
@@ -22,18 +22,14 @@ import { EndTripModal } from './components/EndTripModal';
 import { Onboarding } from './components/Onboarding';
 import { EditBikeModal } from './components/EditBikeModal';
 import { LogsTab } from './components/LogsTab';
-import { VaultTab } from './components/VaultTab';
 import { TripsTab } from './components/TripsTab';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(true);
   
-  // App State - FIXED ONBOARDING LOOP HERE
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem('motomate_onboarded');
-  });
-  
+  // App State
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [showEditBikeModal, setShowEditBikeModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEndTripModal, setShowEndTripModal] = useState(false);
@@ -51,23 +47,28 @@ export default function App() {
   const [chartTimeframe, setChartTimeframe] = useState('1y');
   const [chartMetric, setChartMetric] = useState('cost');
   
-  // User Data State
-  const [bike, setBike] = useState<BikeType | null>(() => {
-    const saved = localStorage.getItem('motomate_bike');
-    return saved ? JSON.parse(saved) : null;
-  });
+  // User Data State (Empty for production)
+  const [bike, setBike] = useState<BikeType | null>(null);
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
   const [fuel, setFuel] = useState<FuelRecord[]>([]);
   const [accessories, setAccessories] = useState<AccessoryRecord[]>([]);
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
   const [serviceIssues, setServiceIssues] = useState<{ id: string, text: string, date: string, resolved: boolean }[]>([]);
+  const [isAddingIssue, setIsAddingIssue] = useState(false);
+  const [newIssueText, setNewIssueText] = useState('');
 
-  const handleFinishOnboarding = (bikeData: BikeType) => {
-    setBike(bikeData);
-    localStorage.setItem('motomate_bike', JSON.stringify(bikeData));
-    localStorage.setItem('motomate_onboarded', 'true');
-    setShowOnboarding(false);
+  const handleAddIssue = () => {
+    if (newIssueText.trim()) {
+      setServiceIssues(prev => [...prev, { 
+        id: Math.random().toString(), 
+        text: newIssueText.trim(), 
+        date: new Date().toISOString(), 
+        resolved: false 
+      }]);
+      setNewIssueText('');
+      setIsAddingIssue(false);
+    }
   };
 
   const startTrip = () => {
@@ -80,6 +81,7 @@ export default function App() {
   const endTrip = () => {
     setShowEndTripModal(true);
   };
+
   const refillEfficiencyData = useMemo(() => {
     const now = new Date();
     let startDate = new Date(0);
@@ -113,25 +115,47 @@ export default function App() {
 
   const monthlyAnalytics = useMemo(() => {
     const now = new Date();
-    let startDate = new Date(0);
+    let startDate = new Date(0); // All time
 
-    if (chartTimeframe === '1m') startDate = startOfMonth(now);
-    else if (chartTimeframe === '3m') startDate = addMonths(now, -3);
-    else if (chartTimeframe === '6m') startDate = addMonths(now, -6);
-    else if (chartTimeframe === '1y') startDate = addMonths(now, -12);
+    if (chartTimeframe === '1m') {
+      startDate = startOfMonth(now);
+    } else if (chartTimeframe === '3m') {
+      startDate = addMonths(now, -3);
+    } else if (chartTimeframe === '6m') {
+      startDate = addMonths(now, -6);
+    } else if (chartTimeframe === '1y') {
+      startDate = addMonths(now, -12);
+    }
     
     const grouped: Record<string, { date: string, fullDate: Date, cost: number, liters: number, fuelCost: number, maintenanceCost: number, accessoriesCost: number, efficiency: number, efficiencyCount: number, distance: number, costPerKm: number, avgPricePerLiter: number }> = {};
 
+    // Helper to add to grouped data
     const addToGroup = (dateStr: string, cost: number, liters: number = 0, type: 'fuel' | 'maintenance' | 'accessory', distance: number = 0) => {
       const date = new Date(dateStr);
       if (date < startDate) return;
       
-      let groupKey = (chartTimeframe === '1m' || chartTimeframe === '3m') ? format(date, 'dd MMM') : format(date, 'MMM yy');
+      // Determine grouping key based on timeframe
+      let groupKey: string;
+      if (chartTimeframe === '1m' || chartTimeframe === '3m') {
+        groupKey = format(date, 'dd MMM'); // Daily
+      } else {
+        groupKey = format(date, 'MMM yy'); // Monthly
+      }
 
       if (!grouped[groupKey]) {
         grouped[groupKey] = { 
-          date: groupKey, fullDate: date, cost: 0, liters: 0, fuelCost: 0, maintenanceCost: 0, accessoriesCost: 0,
-          efficiency: 0, efficiencyCount: 0, distance: 0, costPerKm: 0, avgPricePerLiter: 0
+          date: groupKey, 
+          fullDate: date,
+          cost: 0, 
+          liters: 0, 
+          fuelCost: 0, 
+          maintenanceCost: 0, 
+          accessoriesCost: 0,
+          efficiency: 0,
+          efficiencyCount: 0,
+          distance: 0,
+          costPerKm: 0,
+          avgPricePerLiter: 0
         };
       }
       
@@ -142,17 +166,25 @@ export default function App() {
       if (type === 'maintenance') grouped[groupKey].maintenanceCost += cost;
       if (type === 'accessory') grouped[groupKey].accessoriesCost += cost;
       
-      if (date > grouped[groupKey].fullDate) grouped[groupKey].fullDate = date;
+      // Keep track of the latest date in the group for sorting
+      if (date > grouped[groupKey].fullDate) {
+        grouped[groupKey].fullDate = date;
+      }
     };
 
+    // Calculate distance for each fuel record
     const sortedFuel = [...fuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     sortedFuel.forEach((f, i) => {
-      let distance = i > 0 ? f.odometer - sortedFuel[i-1].odometer : 0;
+      let distance = 0;
+      if (i > 0) {
+        distance = f.odometer - sortedFuel[i-1].odometer;
+      }
       addToGroup(f.date, f.cost, f.liters, 'fuel', distance);
     });
     maintenance.forEach(m => addToGroup(m.date, m.cost, 0, 'maintenance'));
     accessories.forEach(a => addToGroup(a.date, a.cost, 0, 'accessory'));
 
+    // Calculate efficiency for each group if fuel data exists
     for (let i = 1; i < sortedFuel.length; i++) {
       const prev = sortedFuel[i-1];
       const curr = sortedFuel[i];
@@ -161,7 +193,13 @@ export default function App() {
       
       const date = new Date(curr.date);
       if (date >= startDate) {
-        let groupKey = (chartTimeframe === '1m' || chartTimeframe === '3m') ? format(date, 'dd MMM') : format(date, 'MMM yy');
+        let groupKey: string;
+        if (chartTimeframe === '1m' || chartTimeframe === '3m') {
+          groupKey = format(date, 'dd MMM');
+        } else {
+          groupKey = format(date, 'MMM yy');
+        }
+        
         if (grouped[groupKey]) {
           grouped[groupKey].efficiency += eff;
           grouped[groupKey].efficiencyCount += 1;
@@ -169,6 +207,7 @@ export default function App() {
       }
     }
 
+    // Sort by fullDate and calculate costPerKm and avgPricePerLiter
     return Object.values(grouped).map(g => ({
       ...g,
       efficiency: g.efficiencyCount > 0 ? parseFloat((g.efficiency / g.efficiencyCount).toFixed(2)) : 0,
@@ -176,7 +215,6 @@ export default function App() {
       avgPricePerLiter: g.liters > 0 ? parseFloat((g.fuelCost / g.liters).toFixed(2)) : 0
     })).sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
   }, [fuel, maintenance, accessories, chartTimeframe]);
-
   const lowestPriceLastMonth = useMemo(() => {
     const lastMonth = addMonths(new Date(), -1);
     const lastMonthFuel = fuel.filter(f => new Date(f.date) >= lastMonth);
@@ -187,8 +225,11 @@ export default function App() {
   const allLogs = useMemo(() => {
     const combined = [
       ...fuel.map(f => ({ 
-        ...f, category: 'fuel', title: f.isDump ? 'Fuel Dump' : 'Fuel Refill', 
-        icon: f.isDump ? Droplets : Fuel, color: f.isDump ? 'text-red-500' : 'text-orange-500', 
+        ...f, 
+        category: 'fuel', 
+        title: f.isDump ? 'Fuel Dump' : 'Fuel Refill', 
+        icon: f.isDump ? Droplets : Fuel, 
+        color: f.isDump ? 'text-red-500' : 'text-orange-500', 
         bg: f.isDump ? 'bg-red-500/10' : 'bg-orange-500/10' 
       })),
       ...maintenance.map(m => ({ ...m, category: 'maintenance', title: m.type, icon: Wrench, color: 'text-yellow-500', bg: 'bg-yellow-500/10' })),
@@ -198,13 +239,18 @@ export default function App() {
   }, [fuel, maintenance, accessories]);
 
   const filteredLogs = useMemo(() => {
-    return allLogs.filter(log => logFilter === 'all' || log.category === logFilter);
+    return allLogs.filter(log => {
+      const matchesType = logFilter === 'all' || log.category === logFilter;
+      return matchesType;
+    });
   }, [allLogs, logFilter]);
 
   const totalFuelCost = useMemo(() => fuel.reduce((acc, curr) => acc + curr.cost, 0), [fuel]);
   const totalMaintenanceCost = useMemo(() => maintenance.reduce((acc, curr) => acc + curr.cost, 0), [maintenance]);
   const totalAccessoriesCost = useMemo(() => accessories.reduce((acc, curr) => acc + curr.cost, 0), [accessories]);
   const totalOverallCost = totalFuelCost + totalMaintenanceCost + totalAccessoriesCost;
+
+  // Smart Mileage Calculation (Full-to-Full method)
   const fuelEfficiency = useMemo(() => {
     const regularFuel = fuel.filter(f => !f.isDump);
     if (regularFuel.length < 2) return 0;
@@ -286,6 +332,9 @@ export default function App() {
     };
   }, [fuel]);
 
+  const healthScore = 85;
+  
+  // Dynamic Service Calculation
   const { daysRemaining, serviceDueKm } = useMemo(() => {
     if (!bike) return { daysRemaining: 0, serviceDueKm: 0 };
 
@@ -295,13 +344,21 @@ export default function App() {
     if (bike.manualServiceKm || bike.manualServiceDate) {
       const remainingKm = bike.manualServiceKm ? Math.max(0, bike.manualServiceKm - currentOdo) : 0;
       const remainingDays = bike.manualServiceDate ? Math.max(0, differenceInDays(new Date(bike.manualServiceDate), new Date())) : 0;
-      return { daysRemaining: remainingDays, serviceDueKm: remainingKm };
+      return {
+        daysRemaining: remainingDays,
+        serviceDueKm: Math.round(remainingKm)
+      };
     }
 
     const SERVICE_SCHEDULE = [
-      { km: 1000, days: 30 }, { km: 5000, days: 150 }, { km: 9000, days: 270 },
-      { km: 13000, days: 390 }, { km: 17000, days: 510 }, { km: 21000, days: 630 },
-      { km: 25000, days: 750 }, { km: 29000, days: 870 },
+      { km: 1000, days: 30 },
+      { km: 5000, days: 150 },
+      { km: 9000, days: 270 },
+      { km: 13000, days: 390 },
+      { km: 17000, days: 510 },
+      { km: 21000, days: 630 },
+      { km: 25000, days: 750 },
+      { km: 29000, days: 870 },
     ];
 
     let nextMilestone = SERVICE_SCHEDULE.find(s => currentOdo < s.km && daysSincePurchase < s.days);
@@ -312,15 +369,18 @@ export default function App() {
        const intervalsKm = Math.floor(Math.max(0, overKm) / 4000) + 1;
        const intervalsDays = Math.floor(Math.max(0, overDays) / 120) + 1;
        const intervals = Math.max(intervalsKm, intervalsDays);
-       nextMilestone = { km: 29000 + (intervals * 4000), days: 870 + (intervals * 120) };
+       nextMilestone = {
+         km: 29000 + (intervals * 4000),
+         days: 870 + (intervals * 120)
+       };
     }
 
     return {
       daysRemaining: Math.max(0, nextMilestone.days - daysSincePurchase),
-      serviceDueKm: Math.max(0, nextMilestone.km - currentOdo)
+      serviceDueKm: Math.round(Math.max(0, nextMilestone.km - currentOdo))
     };
   }, [bike]);
-
+  // Bike Age
   const bikeAge = useMemo(() => {
     if (!bike?.purchaseDate) return '';
     const duration = intervalToDuration({ start: new Date(bike.purchaseDate), end: new Date() });
@@ -331,6 +391,7 @@ export default function App() {
     return parts.length > 0 ? parts.join(' ') : 'Brand New';
   }, [bike?.purchaseDate]);
 
+  // Birthday Alert
   const bdayAlert = useMemo(() => {
     if (!bike?.purchaseDate) return null;
     const today = new Date();
@@ -338,12 +399,18 @@ export default function App() {
     const purchaseDate = new Date(bike.purchaseDate);
     
     let nextBday = new Date(todayStart.getFullYear(), purchaseDate.getMonth(), purchaseDate.getDate());
-    if (nextBday < todayStart) nextBday.setFullYear(todayStart.getFullYear() + 1);
+    
+    if (nextBday < todayStart) {
+      nextBday.setFullYear(todayStart.getFullYear() + 1);
+    }
     
     const daysToBday = differenceInDays(nextBday, todayStart);
     
-    if (daysToBday <= 8 && daysToBday > 0) return `Bike's birthday in ${daysToBday} days! 🎉`;
-    else if (daysToBday === 0) return `Happy Birthday ${bike.name}! 🎂`;
+    if (daysToBday <= 8 && daysToBday > 0) {
+      return `Bike's birthday in ${daysToBday} days! 🎉`;
+    } else if (daysToBday === 0) {
+      return `Happy Birthday ${bike.name}! 🎂`;
+    }
     return null;
   }, [bike?.purchaseDate]);
 
@@ -377,12 +444,17 @@ export default function App() {
 
   const generateResaleReport = () => {
     const doc = new jsPDF();
+    
+    // Header
     doc.setFontSize(22);
-    doc.setTextColor(249, 115, 22);
+    doc.setTextColor(249, 115, 22); // Orange-500
     doc.text('MotoMate: Bike Health Report', 20, 20);
+    
     doc.setFontSize(12);
     doc.setTextColor(100);
     doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy')}`, 20, 30);
+    
+    // Bike Info
     doc.setFontSize(16);
     doc.setTextColor(0);
     doc.text('Vehicle Information', 20, 45);
@@ -391,6 +463,8 @@ export default function App() {
     doc.text(`Registration: ${bike?.registrationNumber || 'N/A'}`, 20, 60);
     doc.text(`Current Odometer: ${bike?.odometer || 0} KM`, 20, 65);
     doc.text(`Average Efficiency: ${fuelEfficiency} KM/L`, 20, 70);
+    
+    // Cost Summary
     doc.setFontSize(16);
     doc.text('Financial Summary', 20, 85);
     doc.setFontSize(10);
@@ -398,28 +472,44 @@ export default function App() {
     doc.text(`Total Maintenance Cost: INR ${totalMaintenanceCost.toLocaleString()}`, 20, 100);
     doc.text(`Total Accessories Cost: INR ${totalAccessoriesCost.toLocaleString()}`, 20, 105);
     doc.text(`Overall Running Cost: INR ${totalOverallCost.toLocaleString()}`, 20, 110);
+    
+    // Service History Table
     doc.setFontSize(16);
     doc.text('Service History', 20, 125);
     (doc as any).autoTable({
       startY: 130,
       head: [['Date', 'Type', 'Cost', 'Odometer', 'Notes']],
       body: maintenance.map(m => [
-        format(new Date(m.date), 'dd MMM yyyy'), m.type, `INR ${m.cost}`, `${m.odometer} KM`, m.notes || '-'
+        format(new Date(m.date), 'dd MMM yyyy'),
+        m.type,
+        `INR ${m.cost}`,
+        `${m.odometer} KM`,
+        m.notes || '-'
       ]),
       theme: 'striped',
       headStyles: { fillColor: [249, 115, 22] }
     });
+    
+    // Save
     doc.save(`${bike?.model || 'bike'}_health_report.pdf`);
   };
 
   const handleShareData = async () => {
     const data = { bike, maintenance, fuel, accessories };
     const text = JSON.stringify(data, null, 2);
+    
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'MotoMate Backup', text: 'My Bike Data Backup', url: window.location.href });
-      } catch (err) { console.error('Share failed:', err); }
+        await navigator.share({
+          title: 'MotoMate Backup',
+          text: 'My Bike Data Backup',
+          url: window.location.href // In a native app, this would be the file path
+        });
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
     } else {
+      // Fallback for browsers that don't support sharing
       const blob = new Blob([text], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -428,28 +518,25 @@ export default function App() {
       a.click();
     }
   };
+
   return (
     <div className={cn(
       "min-h-screen font-sans transition-colors duration-500 flex flex-col items-center justify-center py-0 sm:py-10",
       isDarkMode ? "bg-[#0A0A0C] text-white" : "bg-[#F4F7FA] text-gray-900"
     )}>
+      {/* Mobile Frame Simulation */}
       <div className={cn(
         "w-full max-w-[430px] sm:rounded-[3.5rem] sm:shadow-2xl sm:border-[12px] h-[100dvh] sm:h-[880px] overflow-hidden flex flex-col relative transition-all duration-500",
         isDarkMode ? "bg-[#121216] border-[#1E1E24]" : "bg-white border-gray-900"
       )}>
+        
+        {/* Background Watermark (MT-15 Style Aggressive Bike - Side/Back B&W) */}
         <div 
           className="absolute inset-0 z-0 opacity-[0.08] dark:opacity-[0.15] pointer-events-none bg-cover bg-center bg-no-repeat mix-blend-luminosity grayscale contrast-125"
           style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1558981806-ec527fa842a9?q=80&w=2070&auto=format&fit=crop")' }}
         />
 
-        <div className="relative z-10 h-12 flex justify-between items-center px-10 pt-4">
-          <span className="text-sm font-bold">9:41</span>
-          <div className="flex gap-2 items-center">
-            <Zap className="w-4 h-4 text-orange-500 fill-orange-500" />
-            <div className="w-6 h-3 rounded-sm border border-current opacity-50" />
-          </div>
-        </div>
-
+        {/* Futuristic Header */}
         <header className="relative z-10 px-8 py-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -468,10 +555,11 @@ export default function App() {
           </div>
         </header>
 
+        {/* Main Content Area */}
         <div className="relative z-10 flex-1 overflow-y-auto px-8 pb-32">
           {showOnboarding ? (
             <Onboarding 
-              setBike={handleFinishOnboarding}
+              setBike={setBike}
               setShowOnboarding={setShowOnboarding}
               isDarkMode={isDarkMode}
             />
@@ -483,8 +571,9 @@ export default function App() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="h-full flex flex-col justify-center space-y-8 pb-10"
+                  className="flex flex-col space-y-8 pb-10 pt-4"
                 >
+                  {/* Central Speedometer */}
                   <Speedometer 
                     fuelEfficiency={fuelEfficiency}
                     daysRemaining={daysRemaining}
@@ -522,6 +611,7 @@ export default function App() {
                   )}
 
                   <div className="grid grid-cols-1 gap-4 mt-8">
+                    {/* Total Expense Summary - Moved from Logs */}
                     <div className={cn(
                       "p-6 rounded-[2.5rem] border relative overflow-hidden backdrop-blur-md",
                       isDarkMode ? "bg-[#1E1E24]/80 border-white/5" : "bg-white/80 border-gray-100"
@@ -584,6 +674,7 @@ export default function App() {
                   isDarkMode={isDarkMode}
                 />
               )}
+
               {activeTab === 'about' && (
                 <motion.div
                   key="about"
@@ -593,6 +684,7 @@ export default function App() {
                 >
                   <h2 className="text-3xl font-black italic tracking-tighter uppercase">About Bike</h2>
                   
+                  {/* Main Odometer Card Moved Here */}
                   <div className="relative group">
                     <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-600 rounded-[2.5rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
                     <div className={cn(
@@ -650,6 +742,92 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Issue Tracker - Moved to About */}
+                  <div className={cn(
+                    "p-6 rounded-[2.5rem] border space-y-6 backdrop-blur-md",
+                    isDarkMode ? "bg-[#1E1E24]/80 border-white/5" : "bg-white/80 border-gray-100"
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-orange-500" />
+                        <h3 className="text-sm font-black uppercase tracking-widest">Issue Tracker</h3>
+                      </div>
+                      <button 
+                        onClick={() => setIsAddingIssue(!isAddingIssue)}
+                        className="p-2 rounded-full bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-black transition-all"
+                      >
+                        {isAddingIssue ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {isAddingIssue && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex gap-2"
+                        >
+                          <input 
+                            type="text" 
+                            placeholder="Describe the issue..."
+                            value={newIssueText}
+                            onChange={(e) => setNewIssueText(e.target.value)}
+                            className={cn(
+                              "flex-1 p-3 rounded-2xl text-sm font-bold border outline-none",
+                              isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                            )}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddIssue()}
+                          />
+                          <button 
+                            onClick={handleAddIssue}
+                            className="px-4 py-2 rounded-2xl bg-orange-500 text-black font-black text-xs uppercase tracking-widest hover:bg-orange-400 transition-all"
+                          >
+                            Add
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="space-y-3">
+                      {serviceIssues.length > 0 ? (
+                        serviceIssues.map(issue => (
+                          <div key={issue.id} className={cn(
+                            "p-4 rounded-2xl border flex items-start gap-3 transition-all",
+                            isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100",
+                            issue.resolved && "opacity-50"
+                          )}>
+                            <button 
+                              onClick={() => setServiceIssues(prev => prev.map(i => i.id === issue.id ? { ...i, resolved: !i.resolved } : i))}
+                              className={cn(
+                                "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
+                                issue.resolved ? "bg-green-500 border-green-500" : "border-gray-400"
+                              )}
+                            >
+                              {issue.resolved && <CheckCircle2 className="w-3 h-3 text-black" />}
+                            </button>
+                            <div className="flex-1">
+                              <p className={cn("text-sm font-bold", issue.resolved && "line-through")}>{issue.text}</p>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">
+                                {format(new Date(issue.date), 'dd MMM yyyy')}
+                              </p>
+                            </div>
+                            <button 
+                              onClick={() => setServiceIssues(prev => prev.filter(i => i.id !== issue.id))}
+                              className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 text-gray-500">
+                          <p className="text-sm font-bold">No pending issues.</p>
+                          <p className="text-[10px] uppercase tracking-widest mt-1">Your bike is in top shape!</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div className={cn(
                     "p-8 rounded-[2.5rem] space-y-6 backdrop-blur-md",
                     isDarkMode ? "bg-[#1E1E24]/80" : "bg-white/80 shadow-sm border border-gray-100"
@@ -665,29 +843,15 @@ export default function App() {
                         )}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="bg-orange-500/10 p-3 rounded-xl"><Share2 className="w-5 h-5 text-orange-500" /></div>
+                          <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500">
+                            <Download className="w-5 h-5" />
+                          </div>
                           <div className="text-left">
-                            <p className="text-sm font-bold">Share Backup</p>
-                            <p className="text-[10px] text-gray-500">Share data to other apps</p>
+                            <p className="font-bold">Export Data</p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Share or save backup</p>
                           </div>
                         </div>
-                        <ChevronRight className="w-5 h-5 opacity-30" />
-                      </button>
-
-                      <button 
-                        className={cn(
-                          "w-full p-5 rounded-2xl flex items-center justify-between transition-all active:scale-95",
-                          isDarkMode ? "bg-white/5 hover:bg-white/10" : "bg-gray-50 hover:bg-gray-100"
-                        )}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="bg-purple-500/10 p-3 rounded-xl"><Upload className="w-5 h-5 text-purple-500" /></div>
-                          <div className="text-left">
-                            <p className="text-sm font-bold">Import Data</p>
-                            <p className="text-[10px] text-gray-500">Restore from JSON backup</p>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 opacity-30" />
+                        <ChevronRight className="w-5 h-5 text-gray-500" />
                       </button>
 
                       <button 
@@ -698,78 +862,29 @@ export default function App() {
                         )}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="bg-green-500/10 p-3 rounded-xl"><FileText className="w-5 h-5 text-green-500" /></div>
+                          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500">
+                            <FileText className="w-5 h-5" />
+                          </div>
                           <div className="text-left">
-                            <p className="text-sm font-bold">Resale Health Report</p>
-                            <p className="text-[10px] text-gray-500">Generate PDF for potential buyers</p>
+                            <p className="font-bold">Health Report</p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Generate PDF</p>
                           </div>
                         </div>
-                        <Download className="w-5 h-5 opacity-30" />
+                        <ChevronRight className="w-5 h-5 text-gray-500" />
                       </button>
-
-                      {!showDumpConfirm ? (
-                        <button 
-                          onClick={() => setShowDumpConfirm(true)}
-                          className={cn(
-                            "w-full p-5 rounded-2xl flex items-center justify-between transition-all active:scale-95",
-                            isDarkMode ? "bg-red-500/10 hover:bg-red-500/20" : "bg-red-50 hover:bg-red-100"
-                          )}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="bg-red-500/20 p-3 rounded-xl"><Droplets className="w-5 h-5 text-red-500" /></div>
-                            <div className="text-left">
-                              <p className="text-sm font-bold text-red-500">Fuel Dump</p>
-                              <p className="text-[10px] text-red-500/70">Empty fuel tank manually</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-red-500 opacity-50" />
-                        </button>
-                      ) : (
-                        <div className={cn(
-                          "w-full p-5 rounded-2xl space-y-4 border border-red-500/50",
-                          isDarkMode ? "bg-red-500/10" : "bg-red-50"
-                        )}>
-                          <p className="text-xs font-bold text-red-500 text-center">Are you sure you want to empty the tank?</p>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => setShowDumpConfirm(false)}
-                              className="flex-1 py-3 rounded-xl text-xs font-bold bg-gray-500/20 text-gray-500"
-                            >
-                              Cancel
-                            </button>
-                            <button 
-                              onClick={() => {
-                                const newRecord: FuelRecord = {
-                                  id: Math.random().toString(36).substr(2, 9),
-                                  date: new Date().toISOString(),
-                                  liters: 0,
-                                  cost: 0,
-                                  odometer: bike?.odometer || 0,
-                                  isDump: true
-                                };
-                                setFuel([...fuel, newRecord]);
-                                setShowDumpConfirm(false);
-                              }}
-                              className="flex-1 py-3 rounded-xl text-xs font-bold bg-red-500 text-white"
-                            >
-                              Confirm Dump
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   <div className={cn(
-                    "p-8 rounded-[2.5rem] space-y-4 backdrop-blur-md",
-                    isDarkMode ? "bg-[#1E1E24]/80" : "bg-white/80 shadow-sm border border-gray-100"
+                    "p-8 rounded-[2.5rem] border backdrop-blur-md",
+                    isDarkMode ? "bg-[#1E1E24]/80 border-white/5" : "bg-white/80 border-gray-100"
                   )}>
                     <h3 className="text-xs font-bold text-orange-500 uppercase tracking-[0.3em] mb-4">App Info</h3>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Version</span>
                       <span className="font-bold">v5.0.0-MT15</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Build Mode</span>
                       <span className="font-bold text-orange-500">NATIVE OFFLINE</span>
                     </div>
@@ -780,61 +895,56 @@ export default function App() {
                   </div>
                 </motion.div>
               )}
-
-              {activeTab === 'vault' && (
-                <VaultTab 
-                  isDarkMode={isDarkMode} 
-                  serviceIssues={serviceIssues}
-                  setServiceIssues={setServiceIssues}
-                />
-              )}
             </AnimatePresence>
           )}
         </div>
 
+        {/* Floating Action Button (Add Record) */}
         {!showOnboarding && (
-          <div className={cn(
-            "absolute bottom-0 left-0 right-0 h-24 border-t flex items-center justify-around px-8 pb-4 transition-all duration-500 z-20",
-            isDarkMode ? "bg-[#121216]/80 backdrop-blur-xl border-white/5" : "bg-white/80 backdrop-blur-xl border-gray-100"
-          )}>
-            <button 
-              onClick={() => setActiveTab('dashboard')}
-              className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'dashboard' ? "text-orange-600 scale-110" : "text-gray-500")}
+          <div className="absolute bottom-28 right-8 z-40">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="w-14 h-14 bg-orange-500 text-black rounded-full flex items-center justify-center shadow-xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all"
             >
-              <LayoutDashboard className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">Core</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('vault')}
-              className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'vault' ? "text-orange-600 scale-110" : "text-gray-500")}
-            >
-              <Database className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">Vault</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('trips')}
-              className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'trips' ? "text-orange-600 scale-110" : "text-gray-500")}
-            >
-              <Navigation className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">Trips</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('logs')}
-              className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'logs' ? "text-orange-600 scale-110" : "text-gray-500")}
-            >
-              <Activity className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">Logs</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('about')}
-              className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'about' ? "text-orange-600 scale-110" : "text-gray-500")}
-            >
-              <Info className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">About</span>
+              <Plus className="w-6 h-6" />
             </button>
           </div>
         )}
 
+        {/* Bottom Navigation */}
+        {!showOnboarding && (
+          <nav className={cn(
+            "absolute bottom-0 w-full px-8 py-6 z-30 backdrop-blur-xl border-t",
+            isDarkMode ? "bg-[#121216]/80 border-white/5" : "bg-white/80 border-gray-100"
+          )}>
+            <div className="flex justify-between items-center">
+              {[
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Core' },
+                { id: 'logs', icon: BarChart2, label: 'Logs' },
+                { id: 'trips', icon: Navigation, label: 'Trips' },
+                { id: 'about', icon: Info, label: 'About' }
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 transition-all",
+                      isActive ? "text-orange-500 scale-110" : "text-gray-500 hover:text-gray-400"
+                    )}
+                  >
+                    <Icon className={cn("w-6 h-6", isActive && "fill-orange-500/20")} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
+
+        {/* Modals */}
         <AnimatePresence>
           {showAddModal && (
             <AddRecordModal 
@@ -852,7 +962,7 @@ export default function App() {
             />
           )}
           {showEndTripModal && activeTrip && (
-            <EndTripModal
+            <EndTripModal 
               activeTrip={activeTrip}
               bike={bike}
               setBike={setBike}
@@ -862,17 +972,39 @@ export default function App() {
               isDarkMode={isDarkMode}
             />
           )}
-          {showEditBikeModal && bike && (
-            <EditBikeModal
+          {showEditBikeModal && (
+            <EditBikeModal 
               bike={bike}
               setBike={setBike}
-              onClose={() => setShowEditBikeModal(false)}
+              setShowEditBikeModal={setShowEditBikeModal}
               isDarkMode={isDarkMode}
-              bikeAge={bikeAge}
             />
           )}
         </AnimatePresence>
+
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50"
+            >
+              <div className={cn(
+                "px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border",
+                toast.type === 'success' 
+                  ? "bg-green-500/10 border-green-500/20 text-green-500 backdrop-blur-md" 
+                  : "bg-red-500/10 border-red-500/20 text-red-500 backdrop-blur-md"
+              )}>
+                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <span className="text-sm font-bold tracking-wide">{toast.message}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </div>
   );
-              }
+                        }
