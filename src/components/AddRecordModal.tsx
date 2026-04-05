@@ -235,4 +235,4 @@ export function AddRecordModal({
       </motion.div>
     </motion.div>
   );
-}
+          }
