@@ -9,7 +9,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn } from '@/src/lib/utils';
 import { TripRecord } from '../types';
 
 interface TripsTabProps {
@@ -117,7 +117,11 @@ export function TripsTab({ trips, isDarkMode }: TripsTabProps) {
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-70">Average Insight</h3>
           <p className="text-lg font-black italic leading-tight">
             Your average trip is {avgDistance} KM long. 
-            Keep it up to maintain your bike's health!
+            {parseFloat(String(avgDistance)) < 5 
+              ? " Short trips are great for city commutes!" 
+              : parseFloat(String(avgDistance)) < 50 
+                ? " Perfect distance for maintaining engine health." 
+                : " You're a true highway cruiser!"}
           </p>
         </div>
       )}
