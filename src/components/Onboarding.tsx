@@ -179,4 +179,4 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
       </form>
     </motion.div>
   );
-}
+            }
