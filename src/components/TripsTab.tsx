@@ -127,4 +127,4 @@ export function TripsTab({ trips, isDarkMode }: TripsTabProps) {
       )}
     </motion.div>
   );
-}
+          }
