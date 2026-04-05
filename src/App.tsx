@@ -47,7 +47,7 @@ export default function App() {
   const [chartTimeframe, setChartTimeframe] = useState('1y');
   const [chartMetric, setChartMetric] = useState('cost');
   
-  // User Data State (Empty for production)
+  // User Data State
   const [bike, setBike] = useState<BikeType | null>(null);
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
   const [fuel, setFuel] = useState<FuelRecord[]>([]);
@@ -222,7 +222,8 @@ export default function App() {
 
   const filteredLogs = useMemo(() => {
     return allLogs.filter(log => {
-      return logFilter === 'all' || log.category === logFilter;
+      const matchesType = logFilter === 'all' || log.category === logFilter;
+      return matchesType;
     });
   }, [allLogs, logFilter]);
 
@@ -475,26 +476,32 @@ export default function App() {
     try {
       const data = { bike, maintenance, fuel, accessories };
       const text = JSON.stringify(data, null, 2);
+      const fileName = 'motomate_backup.json';
+      const file = new File([text], fileName, { type: 'application/json' });
       
-      if (navigator.share) {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
+          files: [file],
           title: 'MotoMate Backup',
-          text: 'My Bike Data Backup',
-          url: window.location.href
+          text: 'Here is my MotoMate backup file.'
         });
         showToast('Backup shared successfully!', 'success');
       } else {
-        const blob = new Blob([text], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(file);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `motomate_backup.json`;
+        a.download = fileName;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         showToast('Backup downloaded successfully!', 'success');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Share failed:', err);
-      showToast('Failed to share backup.', 'error');
+      if (err.name !== 'AbortError') {
+        showToast('Failed to share backup.', 'error');
+      }
     }
   };
   return (
@@ -945,6 +952,28 @@ export default function App() {
             />
           )}
         </AnimatePresence>
+        
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="absolute bottom-28 left-0 right-0 flex justify-center z-50 pointer-events-none"
+            >
+              <div className={cn(
+                "px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl backdrop-blur-md",
+                toast.type === 'success' 
+                  ? "bg-green-500/20 text-green-500 border border-green-500/30" 
+                  : "bg-red-500/20 text-red-500 border border-red-500/30"
+              )}>
+                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <span className="text-sm font-bold tracking-wide">{toast.message}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="hidden xl:block absolute top-1/2 -right-72 transform -translate-y-1/2 w-64 space-y-6">
@@ -966,4 +995,4 @@ export default function App() {
       </div>
     </div>
   );
-                              }
+                        }
