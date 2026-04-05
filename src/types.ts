@@ -69,4 +69,4 @@ export interface ServiceChecklistItem {
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
-}
+  }
