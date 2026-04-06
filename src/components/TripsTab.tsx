@@ -6,7 +6,8 @@ import {
   CalendarDays,
   ChevronRight,
   TrendingUp,
-  MapPin
+  MapPin,
+  Droplets
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
@@ -15,9 +16,11 @@ import { TripRecord } from '../types';
 interface TripsTabProps {
   trips: TripRecord[];
   isDarkMode: boolean;
+  fuelEfficiency: number;
+  lastFuelPrice: number;
 }
 
-export function TripsTab({ trips, isDarkMode }: TripsTabProps) {
+export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice }: TripsTabProps) {
   const sortedTrips = [...trips].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   const totalDistance = trips.reduce((acc, trip) => acc + trip.distance, 0);
@@ -64,41 +67,53 @@ export function TripsTab({ trips, isDarkMode }: TripsTabProps) {
 
         <div className="space-y-4">
           {sortedTrips.length > 0 ? (
-            sortedTrips.map((trip) => (
-              <div key={trip.id} className={cn(
-                "p-5 rounded-2xl border transition-all hover:scale-[1.02]",
-                isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-              )}>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-orange-500/10 p-2.5 rounded-xl">
-                      <Navigation className="w-5 h-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{format(new Date(trip.startTime), 'dd MMM yyyy')}</p>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                        {format(new Date(trip.startTime), 'hh:mm a')} - {format(new Date(trip.endTime), 'hh:mm a')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black italic text-orange-500">{trip.distance} <span className="text-[10px] font-normal opacity-50">KM</span></p>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{trip.durationMinutes} MINS</p>
-                  </div>
-                </div>
+            sortedTrips.map((trip) => {
+              // Smart on-the-fly calculation for all trips
+              const estimatedFuel = trip.fuelConsumed || (fuelEfficiency > 0 ? trip.distance / fuelEfficiency : 0);
+              const estimatedCost = trip.cost || (estimatedFuel * lastFuelPrice);
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-current opacity-10">
-                  <div className="flex items-center gap-2">
-                    <Gauge className="w-3 h-3 text-gray-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{trip.startOdometer} → {trip.endOdometer}</span>
+              return (
+                <div key={trip.id} className={cn(
+                  "p-5 rounded-2xl border transition-all hover:scale-[1.02]",
+                  isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                )}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-orange-500/10 p-2.5 rounded-xl">
+                        <Navigation className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">{format(new Date(trip.startTime), 'dd MMM yyyy')}</p>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                          {format(new Date(trip.startTime), 'hh:mm a')} - {format(new Date(trip.endTime), 'hh:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black italic text-orange-500">{trip.distance} <span className="text-[10px] font-normal opacity-50">KM</span></p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{trip.durationMinutes} MINS</p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Completed</span>
+
+                  <div className={cn(
+                    "grid grid-cols-3 gap-4 pt-4 border-t",
+                    isDarkMode ? "border-white/10" : "border-gray-100"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-3 h-3 text-gray-500" />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase">{trip.startOdometer} → {trip.endOdometer}</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <Droplets className="w-3 h-3 text-orange-500" />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase">{estimatedFuel.toFixed(2)} L</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-[10px] font-bold text-green-500 uppercase">₹{estimatedCost.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-12 text-gray-500">
               <MapPin className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -127,4 +142,4 @@ export function TripsTab({ trips, isDarkMode }: TripsTabProps) {
       )}
     </motion.div>
   );
-          }
+}
