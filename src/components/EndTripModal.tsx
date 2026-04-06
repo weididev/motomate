@@ -13,6 +13,8 @@ interface EndTripModalProps {
   setActiveTrip: (trip: ActiveTrip | null) => void;
   setShowEndTripModal: (show: boolean) => void;
   isDarkMode: boolean;
+  fuelEfficiency: number;
+  lastFuelPrice: number;
 }
 
 export function EndTripModal({
@@ -22,7 +24,9 @@ export function EndTripModal({
   setTrips,
   setActiveTrip,
   setShowEndTripModal,
-  isDarkMode
+  isDarkMode,
+  fuelEfficiency,
+  lastFuelPrice
 }: EndTripModalProps) {
   const [inputMode, setInputMode] = useState<'odo' | 'km'>('km');
   const [odoValue, setOdoValue] = useState('');
@@ -72,6 +76,11 @@ export function EndTripModal({
     const duration = differenceInMinutes(new Date(endTime), new Date(activeTrip.startTime));
     const distance = Math.round((finalEndOdo - activeTrip.startOdometer) * 10) / 10;
 
+    // Smart Calculations
+    const effectiveEfficiency = fuelEfficiency > 0 ? fuelEfficiency : 40;
+    const fuelConsumed = distance / effectiveEfficiency;
+    const cost = fuelConsumed * lastFuelPrice;
+
     const newTrip: TripRecord = {
       id: Math.random().toString(36).substr(2, 9),
       startTime: activeTrip.startTime,
@@ -79,7 +88,9 @@ export function EndTripModal({
       startOdometer: activeTrip.startOdometer,
       endOdometer: finalEndOdo,
       distance,
-      durationMinutes: duration
+      durationMinutes: duration,
+      fuelConsumed: parseFloat(fuelConsumed.toFixed(2)),
+      cost: parseFloat(cost.toFixed(2))
     };
 
     setTrips(prev => [...prev, newTrip]);
@@ -194,4 +205,4 @@ export function EndTripModal({
       </motion.div>
     </motion.div>
   );
-  }
+}
