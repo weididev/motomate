@@ -24,6 +24,8 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
       price: formData.price !== undefined ? parseFloat(formData.price as any) : undefined,
       fuelCapacity: formData.fuelCapacity ? parseFloat(formData.fuelCapacity as any) : 10,
       manualServiceKm: formData.manualServiceKm ? parseFloat(formData.manualServiceKm as any) : undefined,
+      registrationValidity: formData.registrationValidity || undefined,
+      insuranceExpiry: formData.insuranceExpiry || undefined
     });
     onClose();
   };
@@ -112,10 +114,14 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Reg. Validity</label>
               <input type="date" value={formData.registrationValidity || ''} onChange={e => setFormData({...formData, registrationValidity: e.target.value})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Insurance Expiry</label>
+              <input type="date" value={formData.insuranceExpiry || ''} onChange={e => setFormData({...formData, insuranceExpiry: e.target.value})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
             </div>
           </div>
 
