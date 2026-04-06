@@ -11,6 +11,7 @@ export interface Bike {
   odometer: number; // Supports decimals (e.g., 7260.3)
   price?: number;
   registrationValidity?: string;
+  insuranceExpiry?: string;
   fuelCapacity: number;
   manualServiceKm?: number;
   manualServiceDate?: string;
@@ -52,6 +53,8 @@ export interface TripRecord {
   endOdometer: number;
   distance: number;
   durationMinutes: number;
+  fuelConsumed?: number;
+  cost?: number;
 }
 
 export interface ActiveTrip {
