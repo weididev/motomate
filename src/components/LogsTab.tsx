@@ -1,12 +1,27 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
-  History, TrendingUp, Calculator, Filter, Fuel,
-  CalendarDays, CheckCircle2, ChevronDown
+  History, 
+  TrendingUp, 
+  Calculator,
+  Filter,
+  Fuel,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown
 } from 'lucide-react';
 import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, BarChart, Bar, Cell, ReferenceLine
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  Cell,
+  ReferenceLine
 } from 'recharts';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
@@ -36,10 +51,23 @@ interface LogsTabProps {
 }
 
 export function LogsTab({
-  filteredLogs, logFilter, setLogFilter, chartTimeframe, setChartTimeframe,
-  chartMetric, setChartMetric, fuelData, refillEfficiencyData, isDarkMode,
-  totalOverallCost, totalFuelCost, totalMaintenanceCost, totalAccessoriesCost,
-  lowestPriceLastMonth, dayWiseUsage, stationEfficiency
+  filteredLogs,
+  logFilter,
+  setLogFilter,
+  chartTimeframe,
+  setChartTimeframe,
+  chartMetric,
+  setChartMetric,
+  fuelData,
+  refillEfficiencyData,
+  isDarkMode,
+  totalOverallCost,
+  totalFuelCost,
+  totalMaintenanceCost,
+  totalAccessoriesCost,
+  lowestPriceLastMonth,
+  dayWiseUsage,
+  stationEfficiency
 }: LogsTabProps) {
   const [isTooltipActive, setIsTooltipActive] = useState(false);
   const [activeChart, setActiveChart] = useState<'expense' | 'efficiency' | 'refill' | 'costPerKm' | 'priceTrend' | 'usage'>('expense');
@@ -102,6 +130,7 @@ export function LogsTab({
                     "p-2 rounded-lg transition-all", 
                     chartMetric === 'cost' ? "bg-orange-500 text-black shadow-lg" : "text-gray-500"
                   )}
+                  title="Total Cost"
                 >
                   <Calculator className="w-3.5 h-3.5" />
                 </button>
@@ -111,6 +140,7 @@ export function LogsTab({
                     "p-2 rounded-lg transition-all", 
                     chartMetric === 'liters' ? "bg-orange-500 text-black shadow-lg" : "text-gray-500"
                   )}
+                  title="Fuel Volume"
                 >
                   <Fuel className="w-3.5 h-3.5" />
                 </button>
@@ -118,7 +148,7 @@ export function LogsTab({
             )}
           </div>
 
-          {/* Timeframe Selector */}
+          {/* Timeframe Selector - Moved here */}
           <div className="grid grid-cols-5 gap-1 p-1 rounded-2xl bg-black/5 dark:bg-white/5">
             {(['1m', '3m', '6m', '1y', 'all'] as const).map((tf) => (
               <button
@@ -136,6 +166,7 @@ export function LogsTab({
             ))}
           </div>
         </div>
+
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
             {activeChart === 'usage' ? (
@@ -343,6 +374,7 @@ export function LogsTab({
           )}
           </ResponsiveContainer>
         </div>
+        
         {activeChart === 'usage' && (
           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4">
             <TrendingUp className="w-4 h-4 text-orange-500" />
@@ -497,6 +529,7 @@ export function LogsTab({
           </div>
         )}
       </div>
+
       {/* Entry History */}
       <div className={cn(
         "p-6 rounded-[2.5rem] border space-y-6 backdrop-blur-md",
@@ -576,4 +609,4 @@ export function LogsTab({
       </div>
     </motion.div>
   );
-                    }
+}
