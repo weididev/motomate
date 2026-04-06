@@ -127,4 +127,4 @@ export function SettingsTab({
       </div>
     </motion.div>
   );
-                            }
+}
