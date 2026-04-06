@@ -15,6 +15,7 @@ interface SpeedometerProps {
   startTrip: () => void;
   endTrip: () => void;
   bikeAge: string;
+  liveOdometer?: number | null;
 }
 
 export function Speedometer({ 
@@ -29,16 +30,17 @@ export function Speedometer({
   activeTrip,
   startTrip,
   endTrip,
-  bikeAge
+  bikeAge,
+  liveOdometer
 }: SpeedometerProps) {
   const percentage = 75; // Mock speed/progress
   const strokeDasharray = 2 * Math.PI * 80;
   const strokeDashoffset = strokeDasharray - (strokeDasharray * 0.75 * percentage) / 100;
 
-  const odoValue = bike?.odometer || 0;
+  const odoValue = liveOdometer || bike?.odometer || 0;
   const odoStr = odoValue.toFixed(1).padStart(8, '0'); // e.g. 007260.3
 
-  // Fuel Bars: dynamic based on capacity
+  // Fuel Bars: 1 bar per Liter
   const capacity = Math.round(fuelCapacity || 10);
   const fuelBars = Math.min(capacity, Math.ceil(currentFuel));
 
@@ -107,9 +109,14 @@ export function Speedometer({
       {/* Odometer Display Below Meter */}
       <div className="mt-6 flex flex-col items-center">
         <div className={cn(
-          "px-6 py-4 rounded-[2rem] border flex items-center gap-4 shadow-xl",
+          "px-6 py-4 rounded-[2rem] border flex items-center gap-4 shadow-xl relative",
           isDarkMode ? "bg-black/60 border-white/10 shadow-black/50" : "bg-white border-gray-200 shadow-gray-200"
         )}>
+          {liveOdometer && (
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse uppercase tracking-widest">
+              Live
+            </div>
+          )}
           <Gauge className="w-5 h-5 text-orange-500" />
           <div className="flex gap-0.5 items-center">
             {odoStr.split('').map((digit, i) => (
@@ -184,4 +191,4 @@ export function Speedometer({
       </div>
     </div>
   );
-            }
+}
