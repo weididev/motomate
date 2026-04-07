@@ -1,0 +1,5 @@
+{
+  "name": "MotoMate Offline - Native Bike Manager",
+  "description": "A completely offline, privacy-focused bike management app. Track fuel, maintenance, and documents without AI or internet. Designed for native porting.",
+  "requestFramePermissions": []
+}
