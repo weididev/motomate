@@ -25,7 +25,10 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
       fuelCapacity: formData.fuelCapacity ? parseFloat(formData.fuelCapacity as any) : 10,
       manualServiceKm: formData.manualServiceKm ? parseFloat(formData.manualServiceKm as any) : undefined,
       registrationValidity: formData.registrationValidity || undefined,
-      insuranceExpiry: formData.insuranceExpiry || undefined
+      insuranceExpiry: formData.insuranceExpiry || undefined,
+      vin: formData.vin || formData.chassisNumber || undefined,
+      chassisNumber: formData.chassisNumber || formData.vin || undefined,
+      puccExpiry: formData.puccExpiry || undefined
     });
     onClose();
   };
@@ -111,6 +114,17 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Fuel Capacity (L)</label>
               <input type="number" step="0.1" required value={formData.fuelCapacity || ''} onChange={e => setFormData({...formData, fuelCapacity: parseFloat(e.target.value) || 0})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">VIN / Chassis No.</label>
+              <input type="text" placeholder="e.g. ME1XXXXXXXXXXXXXX" value={formData.vin || formData.chassisNumber || ''} onChange={e => setFormData({...formData, vin: e.target.value, chassisNumber: e.target.value})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">PUCC Expiry</label>
+              <input type="date" value={formData.puccExpiry || ''} onChange={e => setFormData({...formData, puccExpiry: e.target.value})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
             </div>
           </div>
 
