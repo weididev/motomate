@@ -1,10 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.weididev.motomate',
+  appId: 'com.motomate.app',
   appName: 'MotoMate',
   webDir: 'dist',
-  bundledWebRuntime: false
+  server: {
+    androidScheme: 'https'
+  }
 };
 
 export default config;
