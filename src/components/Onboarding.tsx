@@ -21,10 +21,6 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
     purchaseDate: format(new Date(), 'yyyy-MM-dd'),
     odometer: 0,
     price: '',
-    registrationValidity: '',
-    insuranceExpiry: '',
-    engineNumber: '',
-    chassisNumber: '',
     fuelCapacity: 10
   });
 
@@ -35,9 +31,7 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
       id: '1',
       odometer: Math.round((formData.odometer || 0) * 10) / 10,
       price: formData.price ? parseFloat(formData.price) : undefined,
-      fuelCapacity: formData.fuelCapacity,
-      registrationValidity: formData.registrationValidity || undefined,
-      insuranceExpiry: formData.insuranceExpiry || undefined
+      fuelCapacity: formData.fuelCapacity
     });
     setShowOnboarding(false);
   };
@@ -156,27 +150,6 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
               placeholder="e.g. 10"
               value={formData.fuelCapacity || ''}
               onChange={e => setFormData({...formData, fuelCapacity: parseFloat(e.target.value) || 0})}
-              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Reg. Validity</label>
-            <input 
-              type="date" 
-              value={formData.registrationValidity}
-              onChange={e => setFormData({...formData, registrationValidity: e.target.value})}
-              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Insurance Expiry</label>
-            <input 
-              type="date" 
-              value={formData.insuranceExpiry}
-              onChange={e => setFormData({...formData, insuranceExpiry: e.target.value})}
               className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
             />
           </div>
