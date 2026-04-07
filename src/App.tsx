@@ -56,6 +56,9 @@ import {
   Cell
 } from 'recharts';
 import { format, differenceInDays, addMonths, differenceInMinutes, startOfMonth, intervalToDuration } from 'date-fns';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import { cn } from '@/src/lib/utils';
 import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from './types';
 import { Speedometer } from './components/Speedometer';
@@ -114,6 +117,7 @@ export default function App() {
   const [showEndTripModal, setShowEndTripModal] = useState(false);
   const [showInsuranceAlert, setShowInsuranceAlert] = useState(false);
   const [showDumpConfirm, setShowDumpConfirm] = useState(false);
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => localStorage.getItem('motomate_last_backup_date'));
 
   // Live Trip Automation
   const [liveOdometer, setLiveOdometer] = useState<number | null>(null);
@@ -641,59 +645,73 @@ export default function App() {
   const handleShareData = async () => {
     const data = { bike, maintenance, fuel, accessories, trips, serviceIssues };
     const jsonString = JSON.stringify(data, null, 2);
-    const fileName = 'motomate_backup.json';
+    const fileName = `motomate_backup_${format(new Date(), 'yyyyMMdd_HHmm')}.json`;
     
-    try {
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const file = new File([blob], fileName, { type: 'application/json' });
+    // Save to "Cache Memory" (LocalStorage) for temporary persistence
+    const now = new Date().toISOString();
+    localStorage.setItem('motomate_last_backup', jsonString);
+    localStorage.setItem('motomate_last_backup_date', now);
+    setLastBackupDate(now);
 
-      // Check if navigator.share is available and can share files
+    try {
+      // 1. Try Native Share (Capacitor) - Works in APK
+      if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
+        try {
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonString,
+            directory: Directory.Cache,
+            encoding: Encoding.UTF8,
+          });
+
+          await Share.share({
+            title: 'MotoMate Backup',
+            text: 'My MotoMate data backup file.',
+            url: result.uri,
+            dialogTitle: 'Share Backup via',
+          });
+          
+          showToast('System share opened!', 'success');
+        } catch (nativeErr: any) {
+          console.error('Native share error:', nativeErr);
+          showToast('Share Error: ' + nativeErr.message, 'error');
+        }
+        return;
+      }
+
+      // 2. Try Web Share API - Works in modern mobile browsers
       if (navigator.share) {
-        const canShareFiles = navigator.canShare && navigator.canShare({ files: [file] });
-        
-        if (canShareFiles) {
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const file = new File([blob], fileName, { type: 'application/json' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               files: [file],
               title: 'MotoMate Backup',
-              text: 'My MotoMate data backup file.'
+              text: 'MotoMate Data Backup'
             });
-            showToast('Backup shared successfully!', 'success');
+            showToast('Share menu opened!', 'success');
             return;
-          } catch (shareError) {
-            console.error('File share failed, falling back to text:', shareError);
+          } catch (shareError: any) {
+            console.warn('Web Share failed:', shareError.message);
           }
         }
+      }
+      
+      // 3. Final Reliable Fallback: Direct Download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup saved to device!', 'success');
 
-        // Fallback to text sharing if file sharing fails or is not supported
-        try {
-          await navigator.share({
-            title: 'MotoMate Backup',
-            text: `MotoMate Backup Data:\n${jsonString.substring(0, 1000)}... (Full data in file)`
-          });
-          showToast('Backup shared as text summary!', 'success');
-        } catch (textShareError) {
-          console.error('Text share failed:', textShareError);
-          throw textShareError; // Trigger download fallback
-        }
-      } else {
-        throw new Error('Web Share API not supported');
-      }
     } catch (err: any) {
-      console.error('Share failed:', err);
-      // Final fallback: Download
-      try {
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast('Sharing failed, file downloaded instead.', 'success');
-      } catch (downloadErr) {
-        showToast('Failed to share or download backup.', 'error');
-      }
+      console.error('Share process failed:', err);
+      showToast('Error sharing. Try downloading.', 'error');
     }
   };
 
@@ -950,6 +968,28 @@ export default function App() {
                         </div>
                       </div>
 
+                      <div className="grid grid-cols-2 gap-8 mt-6">
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">VIN / Chassis No.</p>
+                          <p className="text-sm font-black tracking-tighter opacity-80">{bike?.vin || bike?.chassisNumber || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">PUCC Expiry</p>
+                          <p className="text-sm font-black tracking-tighter opacity-80">{bike?.puccExpiry ? format(new Date(bike.puccExpiry), 'dd MMM yyyy') : 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-8 mt-6">
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Reg. Validity</p>
+                          <p className="text-sm font-black tracking-tighter opacity-80">{bike?.registrationValidity ? format(new Date(bike.registrationValidity), 'dd MMM yyyy') : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Insurance Expiry</p>
+                          <p className="text-sm font-black tracking-tighter opacity-80">{bike?.insuranceExpiry ? format(new Date(bike.insuranceExpiry), 'dd MMM yyyy') : 'N/A'}</p>
+                        </div>
+                      </div>
+
                       <div className="mt-8 pt-6 border-t border-current opacity-10 flex justify-between items-center">
                         <span className="text-xs font-bold uppercase tracking-widest">{bike?.company || 'Unknown'} {bike?.model || 'Model'}</span>
                         <div className="flex gap-1">
@@ -978,12 +1018,24 @@ export default function App() {
                         <div className="flex items-center gap-4">
                           <div className="bg-orange-500/10 p-3 rounded-xl"><Share2 className="w-5 h-5 text-orange-500" /></div>
                           <div className="text-left">
-                            <p className="text-sm font-bold">Share Backup</p>
-                            <p className="text-[10px] text-gray-500">Share data to other apps</p>
+                            <p className="text-sm font-bold">Generate & Share Backup</p>
+                            <p className="text-[10px] text-gray-500">Saves to cache and opens share menu</p>
                           </div>
                         </div>
                         <ChevronRight className="w-5 h-5 opacity-30" />
                       </button>
+
+                      {lastBackupDate && (
+                        <div className={cn(
+                          "p-4 rounded-xl flex items-center gap-3",
+                          isDarkMode ? "bg-white/5" : "bg-gray-50"
+                        )}>
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                            Last Cached: {format(new Date(lastBackupDate), 'MMM dd, HH:mm')}
+                          </p>
+                        </div>
+                      )}
 
                       <button 
                         onClick={() => {
@@ -1021,8 +1073,8 @@ export default function App() {
                         <div className="flex items-center gap-4">
                           <div className="bg-purple-500/10 p-3 rounded-xl"><Upload className="w-5 h-5 text-purple-500" /></div>
                           <div className="text-left">
-                            <p className="text-sm font-bold">Import Data</p>
-                            <p className="text-[10px] text-gray-500">Restore from JSON backup</p>
+                            <p className="text-sm font-bold">Import Backup File</p>
+                            <p className="text-[10px] text-gray-500">Select .json file from storage</p>
                           </div>
                         </div>
                         <ChevronRight className="w-5 h-5 opacity-30" />
