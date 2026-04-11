@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   History, 
   TrendingUp, 
@@ -8,7 +8,11 @@ import {
   Fuel,
   CalendarDays,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  Trash2,
+  Edit2,
+  MoreVertical,
+  X
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -21,7 +25,10 @@ import {
   BarChart,
   Bar,
   Cell,
-  ReferenceLine
+  ReferenceLine,
+  PieChart,
+  Pie,
+  Legend
 } from 'recharts';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
@@ -45,9 +52,12 @@ interface LogsTabProps {
   dayWiseUsage: { day: string, km: number }[];
   stationEfficiency: { 
     stats: { name: string, efficiency: number, count: number }[],
-    isSixMonthMilestone: boolean,
-    daysTracked: number
+    daysTracked: number,
+    isSixMonthMilestone: boolean
   };
+  segmentAnalytics: { name: string, count: number, distance: number, fuel: number, cost: number, color: string }[];
+  deleteRecord: (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip') => void;
+  editRecord: (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip', updatedData: any) => void;
 }
 
 export function LogsTab({
@@ -67,10 +77,13 @@ export function LogsTab({
   totalAccessoriesCost,
   lowestPriceLastMonth,
   dayWiseUsage,
-  stationEfficiency
+  stationEfficiency,
+  segmentAnalytics,
+  deleteRecord,
+  editRecord
 }: LogsTabProps) {
   const [isTooltipActive, setIsTooltipActive] = useState(false);
-  const [activeChart, setActiveChart] = useState<'expense' | 'efficiency' | 'refill' | 'costPerKm' | 'priceTrend' | 'usage'>('expense');
+  const [activeChart, setActiveChart] = useState<'expense' | 'efficiency' | 'refill' | 'costPerKm' | 'priceTrend' | 'usage' | 'segments'>('expense');
 
   const efficiencyThreshold = 40;
   const off = useMemo(() => {
@@ -116,6 +129,7 @@ export function LogsTab({
                 <option value="costPerKm">Cost Per KM</option>
                 <option value="priceTrend">Fuel Price Trend</option>
                 <option value="usage">Usage Histogram</option>
+                <option value="segments">Trip Segments</option>
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                 <ChevronDown className="w-3 h-3" />
@@ -169,7 +183,45 @@ export function LogsTab({
 
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            {activeChart === 'usage' ? (
+            {activeChart === 'segments' ? (
+              <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <Pie
+                  data={segmentAnalytics}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={5}
+                  dataKey="count"
+                  stroke="none"
+                >
+                  {segmentAnalytics.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: isDarkMode ? '#1E1E24' : '#fff',
+                    border: 'none',
+                    borderRadius: '16px',
+                    fontSize: '10px'
+                  }}
+                  formatter={(value: any, name: any, props: any) => {
+                    const data = props.payload;
+                    return [
+                      `${data.count} Trips | ${data.distance} KM | ₹${data.cost} | ${data.fuel}L`,
+                      name
+                    ];
+                  }}
+                />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                />
+              </PieChart>
+            ) : activeChart === 'usage' ? (
               <BarChart data={dayWiseUsage} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#333" : "#eee"} />
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
@@ -512,7 +564,7 @@ export function LogsTab({
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">6-Month Milestone Reached!</p>
-                  <p className="text-xs font-bold">Your fuel quality data is now highly accurate based on long-term tracking.</p>
+                  <p className="text-xs font-bold">Your fuel quality data is highly accurate based on long-term tracking.</p>
                 </div>
               </div>
             ) : (
@@ -566,13 +618,13 @@ export function LogsTab({
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
           {filteredLogs.length > 0 ? (
             filteredLogs.map((log) => {
               const Icon = log.icon;
               return (
                 <div key={log.id} className={cn(
-                  "p-4 rounded-2xl flex items-center justify-between border transition-all hover:scale-[1.02]",
+                  "p-4 rounded-2xl flex items-center justify-between border transition-all group",
                   isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
                 )}>
                   <div className="flex items-center gap-4">
@@ -593,9 +645,25 @@ export function LogsTab({
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-black italic text-orange-500">₹{log.cost}</p>
-                    {log.liters && <p className="text-[10px] font-bold text-gray-500">{log.liters} L</p>}
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-black italic text-orange-500">₹{log.cost}</p>
+                      {log.liters && <p className="text-[10px] font-bold text-gray-500">{log.liters} L</p>}
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => editRecord(log.id, log.category, log)}
+                        className="p-2 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-all"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => deleteRecord(log.id, log.category)}
+                        className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
