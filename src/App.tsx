@@ -61,15 +61,15 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/src/lib/utils';
 import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from './types';
-import { Speedometer } from './components/Speedometer';
-import { AddRecordModal } from './components/AddRecordModal';
-import { EndTripModal } from './components/EndTripModalView';
-import { Onboarding } from './components/Onboarding';
-import { EditBikeModal } from './components/EditBikeModal';
-import { EditTripModal } from './components/EditTripModal';
-import { RecordLapModal } from './components/RecordLapModalView';
-import { LogsTab } from './components/LogsTab';
-import { TripsTab } from './components/TripsTab';
+import { Speedometer } from '@/src/components/Speedometer';
+import { AddRecordModal } from '@/src/components/AddRecordModal';
+import { EndTripModal } from '@/src/components/TripEndModal';
+import { Onboarding } from '@/src/components/Onboarding';
+import { EditBikeModal } from '@/src/components/EditBikeModal';
+import { EditTripModal } from '@/src/components/EditTripModal';
+import { RecordLapModal } from '@/src/components/LapRecordModal';
+import { LogsTab } from '@/src/components/LogsTab';
+import { TripsTab } from '@/src/components/TripsTab';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
