@@ -67,7 +67,7 @@ import { EndTripModal } from './components/EndTripModalView';
 import { Onboarding } from './components/Onboarding';
 import { EditBikeModal } from './components/EditBikeModal';
 import { EditTripModal } from './components/EditTripModal';
-import { RecordLapModal } from './components/RecordLapModal';
+import { RecordLapModal } from './components/RecordLapModalView';
 import { LogsTab } from './components/LogsTab';
 import { TripsTab } from './components/TripsTab';
 
