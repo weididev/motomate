@@ -8,6 +8,8 @@ export interface Bike {
   purchaseDate: string;
   engineNumber?: string;
   chassisNumber?: string;
+  vin?: string;
+  puccExpiry?: string;
   odometer: number; // Supports decimals (e.g., 7260.3)
   price?: number;
   registrationValidity?: string;
@@ -24,6 +26,8 @@ export interface MaintenanceRecord {
   odometer: number;
   cost: number;
   notes?: string;
+  partChanged?: boolean;
+  nextReplacementOdometer?: number;
 }
 
 export interface FuelRecord {
@@ -35,6 +39,7 @@ export interface FuelRecord {
   stationName?: string;
   efficiency?: number; // km/l for this refill
   isDump?: boolean;
+  isFullTank?: boolean;
 }
 
 export interface AccessoryRecord {
@@ -43,6 +48,15 @@ export interface AccessoryRecord {
   date: string;
   cost: number;
   notes?: string;
+  isMaintenancePart?: boolean;
+}
+
+export interface LapRecord {
+  id: string;
+  timestamp: string;
+  odometer: number;
+  distance: number;
+  type?: 'Pickup' | 'Drop' | 'Free ride' | 'Regular';
 }
 
 export interface TripRecord {
@@ -55,11 +69,18 @@ export interface TripRecord {
   durationMinutes: number;
   fuelConsumed?: number;
   cost?: number;
+  type: 'Pickup/Drop' | 'Free Trip' | 'Regular';
+  laps?: LapRecord[];
 }
 
 export interface ActiveTrip {
   startTime: string;
   startOdometer: number;
+  status: 'active' | 'paused';
+  type: 'Pickup/Drop' | 'Free Trip' | 'Regular';
+  laps: LapRecord[];
+  lastPauseTime?: string;
+  totalPausedMinutes: number;
 }
 
 export interface ServiceChecklistItem {
