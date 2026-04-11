@@ -66,6 +66,8 @@ import { AddRecordModal } from './components/AddRecordModal';
 import { EndTripModal } from './components/EndTripModal';
 import { Onboarding } from './components/Onboarding';
 import { EditBikeModal } from './components/EditBikeModal';
+import { EditTripModal } from './components/EditTripModal';
+import { RecordLapModal } from './components/RecordLapModal';
 import { LogsTab } from './components/LogsTab';
 import { TripsTab } from './components/TripsTab';
 
@@ -114,7 +116,10 @@ export default function App() {
   });
   const [showEditBikeModal, setShowEditBikeModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editRecordData, setEditRecordData] = useState<{ id: string, category: 'fuel' | 'maintenance' | 'accessory', data: any } | null>(null);
+  const [editTripData, setEditTripData] = useState<TripRecord | null>(null);
   const [showEndTripModal, setShowEndTripModal] = useState(false);
+  const [showRecordLapModal, setShowRecordLapModal] = useState(false);
   const [showInsuranceAlert, setShowInsuranceAlert] = useState(false);
   const [showDumpConfirm, setShowDumpConfirm] = useState(false);
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => localStorage.getItem('motomate_last_backup_date'));
@@ -125,17 +130,7 @@ export default function App() {
   useEffect(() => {
     if (!activeTrip) {
       setLiveOdometer(null);
-      return;
     }
-    
-    const interval = setInterval(() => {
-      const elapsedMinutes = differenceInMinutes(new Date(), new Date(activeTrip.startTime));
-      // Assume 40km/h average speed for simulation
-      const simulatedDistance = (elapsedMinutes / 60) * 40;
-      setLiveOdometer(activeTrip.startOdometer + simulatedDistance);
-    }, 1000);
-    
-    return () => clearInterval(interval);
   }, [activeTrip]);
 
   // Insurance Expiry Alert
@@ -189,11 +184,85 @@ export default function App() {
     }
   };
 
-  const startTrip = () => {
+  const deleteRecord = (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip') => {
+    if (category === 'fuel') setFuel(prev => prev.filter(r => r.id !== id));
+    if (category === 'maintenance') setMaintenance(prev => prev.filter(r => r.id !== id));
+    if (category === 'accessory') setAccessories(prev => prev.filter(r => r.id !== id));
+    if (category === 'trip') setTrips(prev => prev.filter(r => r.id !== id));
+    showToast('Record deleted successfully', 'success');
+  };
+
+  const editRecord = (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip', updatedData: any) => {
+    if (category === 'trip') {
+      setEditTripData(updatedData);
+    } else {
+      setEditRecordData({ id, category, data: updatedData });
+      setShowAddModal(true);
+    }
+  };
+
+  const startTrip = (type: 'Pickup/Drop' | 'Free Trip' | 'Regular' = 'Regular') => {
+    const startOdo = bike?.odometer || 0;
     setActiveTrip({
       startTime: new Date().toISOString(),
-      startOdometer: bike?.odometer || 0
+      startOdometer: startOdo,
+      status: 'active',
+      type,
+      laps: [],
+      totalPausedMinutes: 0
     });
+    setLiveOdometer(startOdo);
+  };
+
+  const pauseTrip = () => {
+    if (!activeTrip || activeTrip.status === 'paused') return;
+    setActiveTrip({
+      ...activeTrip,
+      status: 'paused',
+      lastPauseTime: new Date().toISOString()
+    });
+  };
+
+  const resumeTrip = () => {
+    if (!activeTrip || activeTrip.status === 'active' || !activeTrip.lastPauseTime) return;
+    const pausedMinutes = differenceInMinutes(new Date(), new Date(activeTrip.lastPauseTime));
+    setActiveTrip({
+      ...activeTrip,
+      status: 'active',
+      lastPauseTime: undefined,
+      totalPausedMinutes: activeTrip.totalPausedMinutes + pausedMinutes
+    });
+  };
+
+  const recordLap = (distance: number, type: 'Pickup' | 'Drop' | 'Free ride' | 'Regular' = 'Regular') => {
+    let newOdoValue = 0;
+    setActiveTrip(prev => {
+      if (!prev) return prev;
+      const lastOdo = prev.laps.length > 0 
+        ? prev.laps[prev.laps.length - 1].odometer 
+        : prev.startOdometer;
+      
+      const newOdo = Math.round((lastOdo + distance) * 10) / 10;
+      newOdoValue = newOdo;
+      
+      const newLap = {
+        id: Math.random().toString(36).substr(2, 9),
+        timestamp: new Date().toISOString(),
+        odometer: newOdo,
+        distance: distance,
+        type
+      };
+
+      return {
+        ...prev,
+        laps: [...prev.laps, newLap]
+      };
+    });
+    
+    if (newOdoValue > 0) {
+      setLiveOdometer(newOdoValue);
+    }
+    showToast(`${type} Lap recorded!`, 'success');
   };
 
   const endTrip = () => {
@@ -300,7 +369,13 @@ export default function App() {
       addToGroup(f.date, f.cost, f.liters, 'fuel', distance);
     });
     maintenance.forEach(m => addToGroup(m.date, m.cost, 0, 'maintenance'));
-    accessories.forEach(a => addToGroup(a.date, a.cost, 0, 'accessory'));
+    accessories.forEach(a => {
+      if (a.isMaintenancePart) {
+        addToGroup(a.date, a.cost, 0, 'maintenance');
+      } else {
+        addToGroup(a.date, a.cost, 0, 'accessory');
+      }
+    });
 
     // Calculate efficiency for each group if fuel data exists
     for (let i = 1; i < sortedFuel.length; i++) {
@@ -365,18 +440,53 @@ export default function App() {
   }, [allLogs, logFilter]);
 
   const totalFuelCost = useMemo(() => fuel.reduce((acc, curr) => acc + curr.cost, 0), [fuel]);
-  const totalMaintenanceCost = useMemo(() => maintenance.reduce((acc, curr) => acc + curr.cost, 0), [maintenance]);
-  const totalAccessoriesCost = useMemo(() => accessories.reduce((acc, curr) => acc + curr.cost, 0), [accessories]);
+  const totalMaintenanceCost = useMemo(() => {
+    const baseCost = maintenance.reduce((acc, curr) => acc + curr.cost, 0);
+    const partsCost = accessories.filter(a => a.isMaintenancePart).reduce((acc, curr) => acc + curr.cost, 0);
+    return baseCost + partsCost;
+  }, [maintenance, accessories]);
+  const totalAccessoriesCost = useMemo(() => accessories.filter(a => !a.isMaintenancePart).reduce((acc, curr) => acc + curr.cost, 0), [accessories]);
   const totalOverallCost = totalFuelCost + totalMaintenanceCost + totalAccessoriesCost;
 
   // Smart Mileage Calculation (Full-to-Full method)
   const fuelEfficiency = useMemo(() => {
     const regularFuel = fuel.filter(f => !f.isDump);
-    if (regularFuel.length < 2) return 0;
-    const sortedFuel = [...regularFuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const totalDistance = sortedFuel[sortedFuel.length - 1].odometer - sortedFuel[0].odometer;
-    const totalLiters = sortedFuel.slice(1).reduce((acc, curr) => acc + curr.liters, 0);
-    return totalLiters > 0 ? parseFloat((totalDistance / totalLiters).toFixed(2)) : 0;
+    const fullTanks = regularFuel.filter(f => f.isFullTank).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    if (fullTanks.length >= 2) {
+      let totalDist = 0;
+      let totalLit = 0;
+      for (let i = 1; i < fullTanks.length; i++) {
+        const prev = fullTanks[i-1];
+        const curr = fullTanks[i];
+        const dist = curr.odometer - prev.odometer;
+        
+        const fuelBetween = regularFuel.filter(f => 
+          new Date(f.date).getTime() > new Date(prev.date).getTime() && 
+          new Date(f.date).getTime() <= new Date(curr.date).getTime()
+        );
+        const lit = fuelBetween.reduce((acc, f) => acc + f.liters, 0);
+        
+        if (dist > 0 && lit > 0) {
+          totalDist += dist;
+          totalLit += lit;
+        }
+      }
+      if (totalLit > 0) return parseFloat((totalDist / totalLit).toFixed(2));
+    }
+    
+    if (regularFuel.length >= 2) {
+      const sortedFuel = [...regularFuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const totalDistance = sortedFuel[sortedFuel.length - 1].odometer - sortedFuel[0].odometer;
+      const totalLiters = sortedFuel.slice(1).reduce((acc, curr) => acc + curr.liters, 0);
+      const rawEfficiency = totalLiters > 0 ? totalDistance / totalLiters : 0;
+      
+      if (rawEfficiency >= 15 && rawEfficiency <= 80) {
+        return parseFloat(rawEfficiency.toFixed(2));
+      }
+    }
+    
+    return 40; // Default fallback
   }, [fuel]);
 
   const currentFuel = useMemo(() => {
@@ -538,6 +648,50 @@ export default function App() {
     return null;
   }, [bike?.purchaseDate]);
 
+  const maintenanceAlerts = useMemo(() => {
+    if (!bike) return [];
+    const alerts = [];
+    const currentOdo = liveOdometer || bike.odometer;
+
+    // 1. Check for specific part replacements from maintenance records
+    maintenance.forEach(m => {
+      if (m.partChanged && m.nextReplacementOdometer) {
+        const remaining = m.nextReplacementOdometer - currentOdo;
+        if (remaining <= 500) {
+          alerts.push({
+            id: m.id,
+            type: remaining <= 0 ? 'critical' : 'warning',
+            msg: remaining <= 0 
+              ? `Replace ${m.type} immediately! (Overdue by ${Math.abs(Math.round(remaining))} KM)`
+              : `Replace ${m.type} in ${Math.round(remaining)} KM`
+          });
+        }
+      }
+    });
+
+    // 2. Check for Engine Oil (Bike Module) specifically
+    const oilMaintenance = maintenance
+      .filter(m => m.type.toLowerCase().includes('oil') || m.type.toLowerCase().includes('module'))
+      .sort((a, b) => b.odometer - a.odometer);
+    
+    const lastOilChangeOdo = oilMaintenance.length > 0 ? oilMaintenance[0].odometer : 0;
+    const oilInterval = 3000; // Standard interval for MT-15 oil change
+    const nextOilChange = lastOilChangeOdo + oilInterval;
+    const oilRemaining = nextOilChange - currentOdo;
+
+    if (oilRemaining <= 500) {
+      alerts.push({
+        id: 'oil-change',
+        type: oilRemaining <= 0 ? 'critical' : 'warning',
+        msg: oilRemaining <= 0
+          ? `Engine Oil change overdue! (${Math.abs(Math.round(oilRemaining))} KM past due)`
+          : `Engine Oil change due in ${Math.round(oilRemaining)} KM`
+      });
+    }
+
+    return alerts;
+  }, [bike, maintenance, liveOdometer]);
+
   const registrationAlert = useMemo(() => {
     if (!bike?.registrationValidity) return null;
     const expiryDate = new Date(bike.registrationValidity);
@@ -576,6 +730,64 @@ export default function App() {
     
     return Object.entries(usage).map(([day, km]) => ({ day, km }));
   }, [fuel]);
+
+  const lastFuelPrice = useMemo(() => {
+    const regularFuel = fuel.filter(f => !f.isDump);
+    if (regularFuel.length === 0) return 0;
+    const lastRefill = [...regularFuel].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    return lastRefill.cost / lastRefill.liters;
+  }, [fuel]);
+
+  const segmentAnalytics = useMemo(() => {
+    const stats: Record<string, { count: number, distance: number, fuel: number, cost: number, color: string }> = {
+      'Free ride': { count: 0, distance: 0, fuel: 0, cost: 0, color: '#3b82f6' }, // blue
+      'Pickup': { count: 0, distance: 0, fuel: 0, cost: 0, color: '#f59e0b' }, // amber
+      'Drop': { count: 0, distance: 0, fuel: 0, cost: 0, color: '#10b981' }, // green
+      'Regular': { count: 0, distance: 0, fuel: 0, cost: 0, color: '#6b7280' } // gray
+    };
+
+    const effectiveEfficiency = fuelEfficiency > 0 ? fuelEfficiency : 40;
+
+    trips.forEach(trip => {
+      if (trip.laps && trip.laps.length > 0) {
+        trip.laps.forEach(lap => {
+          const type = lap.type || 'Regular';
+          if (stats[type]) {
+            stats[type].count += 1;
+            stats[type].distance += lap.distance;
+            
+            const lapFuel = lap.distance / effectiveEfficiency;
+            const lapCost = lapFuel * lastFuelPrice;
+            
+            stats[type].fuel += lapFuel;
+            stats[type].cost += lapCost;
+          }
+        });
+      } else {
+        const type = trip.type === 'Free Trip' ? 'Free ride' : (trip.type === 'Pickup/Drop' ? 'Pickup' : 'Regular');
+        if (stats[type]) {
+          stats[type].count += 1;
+          stats[type].distance += trip.distance;
+          
+          const tripFuel = trip.distance / effectiveEfficiency;
+          const tripCost = tripFuel * lastFuelPrice;
+          
+          stats[type].fuel += tripFuel;
+          stats[type].cost += tripCost;
+        }
+      }
+    });
+
+    return Object.entries(stats)
+      .filter(([_, data]) => data.count > 0 || data.distance > 0)
+      .map(([name, data]) => ({
+        name,
+        ...data,
+        fuel: parseFloat(data.fuel.toFixed(2)),
+        cost: parseFloat(data.cost.toFixed(2)),
+        distance: parseFloat(data.distance.toFixed(2))
+      }));
+  }, [trips, fuelEfficiency, lastFuelPrice]);
 
   const generateResaleReport = () => {
     try {
@@ -634,13 +846,6 @@ export default function App() {
       showToast('Failed to generate report.', 'error');
     }
   };
-
-  const lastFuelPrice = useMemo(() => {
-    const regularFuel = fuel.filter(f => !f.isDump);
-    if (regularFuel.length === 0) return 0;
-    const lastRefill = [...regularFuel].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    return lastRefill.cost / lastRefill.liters;
-  }, [fuel]);
 
   const handleShareData = async () => {
     const data = { bike, maintenance, fuel, accessories, trips, serviceIssues };
@@ -804,6 +1009,9 @@ export default function App() {
                     isDarkMode={isDarkMode}
                     activeTrip={activeTrip}
                     startTrip={startTrip}
+                    pauseTrip={pauseTrip}
+                    resumeTrip={resumeTrip}
+                    onRecordLapClick={() => setShowRecordLapModal(true)}
                     endTrip={endTrip}
                     bikeAge={bikeAge}
                     liveOdometer={liveOdometer}
@@ -814,6 +1022,18 @@ export default function App() {
                       <span className="text-xs font-bold italic">{bdayAlert}</span>
                     </div>
                   )}
+
+                  {maintenanceAlerts.map(alert => (
+                    <div key={alert.id} className={cn(
+                      "flex items-center gap-3 p-4 rounded-2xl border mt-4",
+                      alert.type === 'critical' ? "bg-red-500/10 border-red-500/20 text-red-500" : "bg-yellow-500/10 border-yellow-500/20 text-yellow-500"
+                    )}>
+                      <Wrench className="w-5 h-5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest">{alert.msg}</p>
+                      </div>
+                    </div>
+                  ))}
 
                   {registrationAlert && (
                     <div className={cn(
@@ -899,6 +1119,9 @@ export default function App() {
                     lowestPriceLastMonth={lowestPriceLastMonth}
                     dayWiseUsage={dayWiseUsage}
                     stationEfficiency={stationEfficiency}
+                    segmentAnalytics={segmentAnalytics}
+                    deleteRecord={deleteRecord}
+                    editRecord={editRecord}
                   />
               )}
 
@@ -908,6 +1131,8 @@ export default function App() {
                   isDarkMode={isDarkMode}
                   fuelEfficiency={fuelEfficiency}
                   lastFuelPrice={lastFuelPrice}
+                  deleteRecord={deleteRecord}
+                  editRecord={editRecord}
                 />
               )}
 
@@ -1152,22 +1377,37 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className={cn(
-                    "p-8 rounded-[2.5rem] space-y-4 backdrop-blur-md",
-                    isDarkMode ? "bg-[#1E1E24]/80" : "bg-white/80 shadow-sm border border-gray-100"
-                  )}>
-                    <h3 className="text-xs font-bold text-orange-500 uppercase tracking-[0.3em] mb-4">App Info</h3>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Version</span>
-                      <span className="font-bold">v5.0.0-MT15</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Build Mode</span>
-                      <span className="font-bold text-orange-500">NATIVE OFFLINE</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Developer</span>
-                      <span className="font-bold">weididev</span>
+                  {/* App Info Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">App Info</h3>
+                    <div className={cn(
+                      "p-6 rounded-[2rem] border space-y-4",
+                      isDarkMode ? "bg-[#1E1E24] border-white/5" : "bg-white border-gray-100"
+                    )}>
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                          <Gauge className="w-8 h-8 text-black" />
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-black italic tracking-tighter">MotoMate</h4>
+                          <p className="text-xs font-bold text-gray-500">Version 1.0.0</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3 pt-4 border-t border-white/10">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Build Mode</span>
+                          <span className="font-bold text-orange-500">NATIVE OFFLINE</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Developer</span>
+                          <span className="font-bold">weididev</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Last Update</span>
+                          <span className="font-bold">April 2026</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1223,9 +1463,13 @@ export default function App() {
               setMaintenance={setMaintenance}
               accessories={accessories}
               setAccessories={setAccessories}
-              setShowAddModal={setShowAddModal}
+              setShowAddModal={(show) => {
+                setShowAddModal(show);
+                if (!show) setEditRecordData(null);
+              }}
               isDarkMode={isDarkMode}
               bikeAge={bikeAge}
+              editMode={editRecordData || undefined}
             />
           )}
           {showEndTripModal && activeTrip && (
@@ -1239,6 +1483,27 @@ export default function App() {
               isDarkMode={isDarkMode}
               fuelEfficiency={fuelEfficiency}
               lastFuelPrice={lastFuelPrice}
+              liveOdometer={liveOdometer}
+            />
+          )}
+          {showRecordLapModal && activeTrip && (
+            <RecordLapModal
+              activeTrip={activeTrip}
+              liveOdometer={liveOdometer || activeTrip.startOdometer}
+              onRecord={recordLap}
+              onClose={() => setShowRecordLapModal(false)}
+              isDarkMode={isDarkMode}
+            />
+          )}
+          {editTripData && (
+            <EditTripModal
+              trip={editTripData}
+              onSave={(id, updatedData) => {
+                setTrips(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+                showToast('Trip updated successfully', 'success');
+              }}
+              onClose={() => setEditTripData(null)}
+              isDarkMode={isDarkMode}
             />
           )}
           {showEditBikeModal && bike && (
