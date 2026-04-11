@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { cn } from '@/src/lib/utils';
-import { Gauge, Play, Square, Timer, MapPin, Clock } from 'lucide-react';
+import { Gauge, Play, Square, Timer, MapPin, Clock, Pause, RotateCcw, Flag } from 'lucide-react';
 import { Bike, ActiveTrip } from '../types';
 
 interface SpeedometerProps {
@@ -12,7 +13,10 @@ interface SpeedometerProps {
   bike: Bike | null;
   isDarkMode: boolean;
   activeTrip: ActiveTrip | null;
-  startTrip: () => void;
+  startTrip: (type: 'Pickup/Drop' | 'Free Trip' | 'Regular') => void;
+  pauseTrip: () => void;
+  resumeTrip: () => void;
+  onRecordLapClick: () => void;
   endTrip: () => void;
   bikeAge: string;
   liveOdometer?: number | null;
@@ -29,6 +33,9 @@ export function Speedometer({
   isDarkMode,
   activeTrip,
   startTrip,
+  pauseTrip,
+  resumeTrip,
+  onRecordLapClick,
   endTrip,
   bikeAge,
   liveOdometer
@@ -143,50 +150,87 @@ export function Speedometer({
       </div>
 
       {/* Innovative Trip Controls - Below Odometer */}
-      <div className="mt-10 flex items-center justify-center w-full px-8">
+      <div className="mt-10 flex flex-col items-center justify-center w-full px-8 gap-4">
         {!activeTrip ? (
-          <button 
-            onClick={startTrip}
-            className="relative group flex items-center justify-center"
-          >
-            {/* Pulsing background glow */}
-            <div className="absolute inset-0 bg-orange-500 blur-2xl opacity-20 group-hover:opacity-40 animate-pulse transition-opacity rounded-full" />
-            
-            <div className={cn(
-              "relative flex items-center gap-4 px-8 py-4 rounded-full border-2 transition-all active:scale-95",
-              isDarkMode 
-                ? "bg-[#1E1E24] border-orange-500/30 hover:border-orange-500 text-white" 
-                : "bg-white border-orange-500/20 hover:border-orange-500 text-gray-900 shadow-lg shadow-orange-500/10"
-            )}>
-              <div className="bg-orange-500 p-2 rounded-full shadow-lg shadow-orange-500/40">
-                <Play className="w-4 h-4 text-black fill-black" />
+          <div className="w-full flex flex-col items-center gap-4">
+            <button 
+              onClick={() => startTrip('Regular')}
+              className="relative group flex items-center justify-center"
+            >
+              {/* Pulsing background glow */}
+              <div className="absolute inset-0 bg-orange-500 blur-2xl opacity-20 group-hover:opacity-40 animate-pulse transition-opacity rounded-full" />
+              
+              <div className={cn(
+                "relative flex items-center gap-4 px-8 py-4 rounded-full border-2 transition-all active:scale-95",
+                isDarkMode 
+                  ? "bg-[#1E1E24] border-orange-500/30 hover:border-orange-500 text-white" 
+                  : "bg-white border-orange-500/20 hover:border-orange-500 text-gray-900 shadow-lg shadow-orange-500/10"
+              )}>
+                <div className="bg-orange-500 p-2 rounded-full shadow-lg shadow-orange-500/40">
+                  <Play className="w-4 h-4 text-black fill-black" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Ignition</p>
+                  <p className="text-sm font-black italic uppercase tracking-tight">Begin Journey</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Ignition</p>
-                <p className="text-sm font-black italic uppercase tracking-tight">Begin Journey</p>
-              </div>
-            </div>
-          </button>
+            </button>
+          </div>
         ) : (
-          <button 
-            onClick={endTrip}
-            className="relative group flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-red-500 blur-2xl opacity-20 animate-pulse rounded-full" />
-            
-            <div className={cn(
-              "relative flex items-center gap-4 px-8 py-4 rounded-full border-2 border-red-500/50 transition-all active:scale-95",
-              isDarkMode ? "bg-red-500/10 text-red-500" : "bg-red-50 text-red-600 shadow-lg shadow-red-500/10"
-            )}>
-              <div className="bg-red-500 p-2 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
-                <Square className="w-4 h-4 text-white fill-white" />
+          <div className="w-full flex flex-col gap-4">
+            <div className="flex items-center justify-between w-full px-4">
+              <div className="flex flex-col">
+                <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em]">Active Trip</p>
+                <p className="text-xs font-bold opacity-50">
+                  {activeTrip.laps.length} Laps Recorded
+                </p>
               </div>
-              <div className="text-left">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Active Trip</p>
-                <p className="text-sm font-black italic uppercase tracking-tight">End Journey</p>
+              <div className="flex gap-2 relative">
+                <button 
+                  onClick={onRecordLapClick}
+                  className={cn(
+                    "p-3 rounded-2xl border transition-all active:scale-95",
+                    isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-gray-200"
+                  )}
+                >
+                  <Flag className="w-4 h-4 text-orange-500" />
+                </button>
+                <button 
+                  onClick={activeTrip.status === 'active' ? pauseTrip : resumeTrip}
+                  className={cn(
+                    "p-3 rounded-2xl border transition-all active:scale-95",
+                    isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-gray-200"
+                  )}
+                >
+                  {activeTrip.status === 'active' ? (
+                    <Pause className="w-4 h-4 text-yellow-500" />
+                  ) : (
+                    <Play className="w-4 h-4 text-green-500 fill-green-500" />
+                  )}
+                </button>
               </div>
             </div>
-          </button>
+
+            <button 
+              onClick={endTrip}
+              className="relative group flex items-center justify-center w-full"
+            >
+              <div className="absolute inset-0 bg-red-500 blur-2xl opacity-20 animate-pulse rounded-full" />
+              
+              <div className={cn(
+                "relative flex items-center gap-4 px-8 py-4 rounded-full border-2 border-red-500/50 transition-all active:scale-95 w-full justify-center",
+                isDarkMode ? "bg-red-500/10 text-red-500" : "bg-red-50 text-red-600 shadow-lg shadow-red-500/10"
+              )}>
+                <div className="bg-red-500 p-2 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
+                  <Square className="w-4 h-4 text-white fill-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em]">Active Trip</p>
+                  <p className="text-sm font-black italic uppercase tracking-tight">End Journey</p>
+                </div>
+              </div>
+            </button>
+          </div>
         )}
       </div>
     </div>
