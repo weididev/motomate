@@ -106,7 +106,7 @@ export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice, del
                         <p className="text-lg font-black italic text-orange-500">{trip.distance} <span className="text-[10px] font-normal opacity-50">KM</span></p>
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{trip.durationMinutes} MINS</p>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 transition-opacity">
                         <button 
                           onClick={() => editRecord(trip.id, 'trip', trip)}
                           className="p-2 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-all"
