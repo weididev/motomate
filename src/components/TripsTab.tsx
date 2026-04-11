@@ -7,7 +7,10 @@ import {
   ChevronRight,
   TrendingUp,
   MapPin,
-  Droplets
+  Droplets,
+  Trash2,
+  Flag,
+  Edit2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
@@ -18,9 +21,11 @@ interface TripsTabProps {
   isDarkMode: boolean;
   fuelEfficiency: number;
   lastFuelPrice: number;
+  deleteRecord: (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip') => void;
+  editRecord: (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip', updatedData: any) => void;
 }
 
-export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice }: TripsTabProps) {
+export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice, deleteRecord, editRecord }: TripsTabProps) {
   const sortedTrips = [...trips].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   const totalDistance = trips.reduce((acc, trip) => acc + trip.distance, 0);
@@ -74,7 +79,7 @@ export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice }: T
 
               return (
                 <div key={trip.id} className={cn(
-                  "p-5 rounded-2xl border transition-all hover:scale-[1.02]",
+                  "p-5 rounded-2xl border transition-all group",
                   isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
                 )}>
                   <div className="flex justify-between items-start mb-4">
@@ -83,17 +88,83 @@ export function TripsTab({ trips, isDarkMode, fuelEfficiency, lastFuelPrice }: T
                         <Navigation className="w-5 h-5 text-orange-500" />
                       </div>
                       <div>
-                        <p className="font-bold text-sm">{format(new Date(trip.startTime), 'dd MMM yyyy')}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm">{format(new Date(trip.startTime), 'dd MMM yyyy')}</p>
+                          {trip.type && (
+                            <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 text-[8px] font-black uppercase tracking-widest">
+                              {trip.type}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                           {format(new Date(trip.startTime), 'hh:mm a')} - {format(new Date(trip.endTime), 'hh:mm a')}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-black italic text-orange-500">{trip.distance} <span className="text-[10px] font-normal opacity-50">KM</span></p>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{trip.durationMinutes} MINS</p>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-black italic text-orange-500">{trip.distance} <span className="text-[10px] font-normal opacity-50">KM</span></p>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{trip.durationMinutes} MINS</p>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => editRecord(trip.id, 'trip', trip)}
+                          className="p-2 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-all"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => deleteRecord(trip.id, 'trip')}
+                          className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+
+                  {trip.laps && trip.laps.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                        <Flag className="w-3 h-3" /> Laps
+                      </p>
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {trip.laps.map((lap, idx) => (
+                          <div key={lap.id} className={cn(
+                            "px-3 py-2 rounded-xl border flex flex-col min-w-[80px]",
+                            isDarkMode ? "bg-white/5 border-white/5" : "bg-white border-gray-200"
+                          )}>
+                            <span className="text-[8px] font-bold text-gray-500 uppercase">{lap.type || `Lap ${idx + 1}`}</span>
+                            <span className="text-xs font-black italic">{lap.distance.toFixed(1)} KM</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Breakdown */}
+                      <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Segment Breakdown</p>
+                        {Object.entries(
+                          trip.laps.reduce((acc, lap) => {
+                            const type = lap.type || 'Regular';
+                            acc[type] = (acc[type] || 0) + lap.distance;
+                            return acc;
+                          }, {} as Record<string, number>)
+                        ).map(([type, dist]) => {
+                          const fuel = fuelEfficiency > 0 ? dist / fuelEfficiency : 0;
+                          const cost = fuel * lastFuelPrice;
+                          return (
+                            <div key={type} className="flex justify-between items-center text-xs">
+                              <span className="font-bold">{type}</span>
+                              <div className="text-right">
+                                <span className="text-orange-500 font-black">{dist.toFixed(1)} KM</span>
+                                <span className="text-gray-500 ml-2">₹{cost.toFixed(1)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div className={cn(
                     "grid grid-cols-3 gap-4 pt-4 border-t",
