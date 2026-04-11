@@ -450,7 +450,11 @@ export default function App() {
 
   // Smart Mileage Calculation (Full-to-Full method)
   const fuelEfficiency = useMemo(() => {
-    const regularFuel = fuel.filter(f => !f.isDump);
+    // Ignore past imported data for mileage calculation. Only use fresh refueling.
+    const cutoffDate = new Date('2026-04-11T00:00:00Z').getTime();
+    const validFuel = fuel.filter(f => new Date(f.date).getTime() >= cutoffDate);
+    const regularFuel = validFuel.filter(f => !f.isDump);
+    
     const fullTanks = regularFuel.filter(f => f.isFullTank).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     if (fullTanks.length >= 2) {
@@ -478,7 +482,7 @@ export default function App() {
     if (regularFuel.length >= 2) {
       const sortedFuel = [...regularFuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const totalDistance = sortedFuel[sortedFuel.length - 1].odometer - sortedFuel[0].odometer;
-      const totalLiters = sortedFuel.slice(1).reduce((acc, curr) => acc + curr.liters, 0);
+      const totalLiters = sortedFuel.reduce((acc, curr) => acc + curr.liters, 0);
       const rawEfficiency = totalLiters > 0 ? totalDistance / totalLiters : 0;
       
       if (rawEfficiency >= 15 && rawEfficiency <= 80) {
@@ -526,25 +530,34 @@ export default function App() {
 
   const stationEfficiency = useMemo(() => {
     const stations: Record<string, { totalDistance: number, totalLiters: number, count: number }> = {};
-    const sortedFuel = [...fuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Ignore past imported data for fuel quality analysis
+    const cutoffDate = new Date('2026-04-11T00:00:00Z').getTime();
+    const validFuel = fuel.filter(f => new Date(f.date).getTime() >= cutoffDate);
+    
+    const sortedFuel = [...validFuel].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const dataDurationDays = sortedFuel.length >= 2 
       ? differenceInDays(new Date(sortedFuel[sortedFuel.length - 1].date), new Date(sortedFuel[0].date)) 
       : 0;
 
-    for (let i = 1; i < sortedFuel.length; i++) {
-      const prev = sortedFuel[i - 1];
+    for (let i = 0; i < sortedFuel.length - 1; i++) {
       const curr = sortedFuel[i];
-      const station = prev.stationName || 'Unknown Station';
-      const distance = curr.odometer - prev.odometer;
+      const next = sortedFuel[i + 1];
+      const station = curr.stationName || 'Unknown Station';
+      const distance = next.odometer - curr.odometer;
       const liters = curr.liters;
 
       if (distance > 0 && liters > 0) {
-        if (!stations[station]) {
-          stations[station] = { totalDistance: 0, totalLiters: 0, count: 0 };
+        const localEfficiency = distance / liters;
+        // Filter out extreme outliers caused by partial fills
+        if (localEfficiency >= 15 && localEfficiency <= 80) {
+          if (!stations[station]) {
+            stations[station] = { totalDistance: 0, totalLiters: 0, count: 0 };
+          }
+          stations[station].totalDistance += distance;
+          stations[station].totalLiters += liters;
+          stations[station].count += 1;
         }
-        stations[station].totalDistance += distance;
-        stations[station].totalLiters += liters;
-        stations[station].count += 1;
       }
     }
 
