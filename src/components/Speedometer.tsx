@@ -49,7 +49,7 @@ export function Speedometer({
 
   // Fuel Bars: 1 bar per Liter
   const capacity = Math.round(fuelCapacity || 10);
-  const fuelBars = Math.min(capacity, Math.ceil(currentFuel));
+  const fuelBars = Math.min(capacity, Math.round(currentFuel));
 
   return (
     <div className="relative flex flex-col items-center justify-center py-6">
