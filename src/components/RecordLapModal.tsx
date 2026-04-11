@@ -1,100 +1,167 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { X } from 'lucide-react';
+import { Bike } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
-import { ActiveTrip } from '../types';
+import { Bike as BikeType } from '../types';
 
-interface RecordLapModalProps {
-  activeTrip: ActiveTrip;
-  liveOdometer: number;
-  onRecord: (distance: number, type: 'Pickup' | 'Drop' | 'Free ride' | 'Regular') => void;
-  onClose: () => void;
+interface OnboardingProps {
+  setBike: React.Dispatch<React.SetStateAction<BikeType | null>>;
+  setShowOnboarding: (show: boolean) => void;
   isDarkMode: boolean;
 }
 
-export function RecordLapModal({ activeTrip, liveOdometer, onRecord, onClose, isDarkMode }: RecordLapModalProps) {
-  const lastOdo = activeTrip.laps.length > 0 
-    ? activeTrip.laps[activeTrip.laps.length - 1].odometer 
-    : activeTrip.startOdometer;
-  
-  const previousTotalDistance = Math.round((lastOdo - activeTrip.startOdometer) * 10) / 10;
-  
-  const [enteredDistance, setEnteredDistance] = useState('');
+export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: OnboardingProps) {
+  const [formData, setFormData] = useState({
+    name: '',
+    company: '',
+    model: '',
+    year: new Date().getFullYear(),
+    registrationNumber: '',
+    purchaseDate: format(new Date(), 'yyyy-MM-dd'),
+    odometer: 0,
+    price: '',
+    fuelCapacity: 10
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setBike({ 
+      ...formData, 
+      id: '1',
+      odometer: Math.round((formData.odometer || 0) * 10) / 10,
+      price: formData.price ? parseFloat(formData.price) : undefined,
+      fuelCapacity: formData.fuelCapacity
+    });
+    setShowOnboarding(false);
+  };
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-8 space-y-8 relative z-10"
     >
-      <motion.div 
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className={cn(
-          "w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border",
-          isDarkMode ? "bg-[#1E1E24] border-white/10" : "bg-white border-gray-100"
-        )}
-      >
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h3 className="text-xl font-black italic tracking-tighter uppercase">Record Lap</h3>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Start Odo: {activeTrip.startOdometer} KM</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-full bg-black/5 dark:bg-white/5">
-            <X className="w-5 h-5" />
-          </button>
+      <div className="text-center">
+        <div className="inline-block bg-orange-500/10 p-4 rounded-3xl mb-4">
+          <Bike className="w-12 h-12 text-orange-500" />
+        </div>
+        <h2 className="text-3xl font-black italic tracking-tighter uppercase">Initialize Unit</h2>
+        <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mt-2">Setup your Bike Profile</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Bike Nickname</label>
+          <input 
+            type="text" 
+            placeholder="e.g. Dark Knight"
+            required
+            value={formData.name}
+            onChange={e => setFormData({...formData, name: e.target.value})}
+            className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+          />
         </div>
 
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">
-              Total Trip Distance (KM)
-            </label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Company</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Yamaha"
+              required
+              value={formData.company}
+              onChange={e => setFormData({...formData, company: e.target.value})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Model</label>
+            <input 
+              type="text" 
+              placeholder="e.g. MT-15"
+              required
+              value={formData.model}
+              onChange={e => setFormData({...formData, model: e.target.value})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Registration Number</label>
+          <input 
+            type="text" 
+            placeholder="WB-XX-XXXX"
+            value={formData.registrationNumber}
+            onChange={e => setFormData({...formData, registrationNumber: e.target.value})}
+            className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Purchase Date</label>
+            <input 
+              type="date" 
+              required
+              value={formData.purchaseDate}
+              onChange={e => setFormData({...formData, purchaseDate: e.target.value})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Current ODO (KM)</label>
             <input 
               type="number" 
               step="0.1"
-              value={enteredDistance}
-              onChange={(e) => setEnteredDistance(e.target.value)}
-              placeholder="e.g. 1.5"
-              className={cn(
-                "w-full p-6 rounded-[2rem] text-2xl font-black italic border outline-none text-center",
-                isDarkMode ? "bg-white/5 border-white/5 text-orange-500" : "bg-gray-50 border-gray-100 text-orange-600"
-              )}
+              required
+              min="0"
+              placeholder="0.0"
+              value={formData.odometer === 0 ? '' : formData.odometer}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^\d*\.?\d{0,1}$/.test(val)) {
+                  setFormData({...formData, odometer: val as any});
+                }
+              }}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
             />
-            <p className="text-[10px] text-center text-gray-500 font-bold uppercase">
-              Previous Lap Distance: {previousTotalDistance} KM
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Select Segment Type</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(['Pickup', 'Drop', 'Free ride'] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => {
-                    const totalDistVal = parseFloat(enteredDistance);
-                    if (isNaN(totalDistVal) || totalDistVal <= previousTotalDistance) {
-                      alert(`Please enter a total trip distance greater than ${previousTotalDistance} KM`);
-                      return;
-                    }
-                    const segmentDist = Math.round((totalDistVal - previousTotalDistance) * 10) / 10;
-                    onRecord(segmentDist, type);
-                    onClose();
-                  }}
-                  className={cn(
-                    "py-4 rounded-2xl text-[10px] font-bold uppercase tracking-tighter border transition-all active:scale-95",
-                    isDarkMode ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-white border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
-      </motion.div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Bike Price (₹)</label>
+            <input 
+              type="number" 
+              placeholder="e.g. 180000"
+              value={formData.price}
+              onChange={e => setFormData({...formData, price: e.target.value})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Fuel Capacity (L)</label>
+            <input 
+              type="number" 
+              step="0.1"
+              required
+              placeholder="e.g. 10"
+              value={formData.fuelCapacity || ''}
+              onChange={e => setFormData({...formData, fuelCapacity: parseFloat(e.target.value) || 0})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+        </div>
+
+        <button 
+          type="submit"
+          className="w-full bg-orange-500 text-black py-5 rounded-[2rem] font-black uppercase tracking-widest hover:bg-orange-400 transition-all shadow-xl shadow-orange-500/20 active:scale-95 mt-4"
+        >
+          Activate System
+        </button>
+      </form>
     </motion.div>
   );
 }
