@@ -63,7 +63,7 @@ import { cn } from '@/src/lib/utils';
 import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from './types';
 import { Speedometer } from './components/Speedometer';
 import { AddRecordModal } from './components/AddRecordModal';
-import { EndTripModal } from './components/EndTripModal';
+import { EndTripModal } from './components/EndTripModalView';
 import { Onboarding } from './components/Onboarding';
 import { EditBikeModal } from './components/EditBikeModal';
 import { EditTripModal } from './components/EditTripModal';
