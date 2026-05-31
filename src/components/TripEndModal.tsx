@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { X, Check, Navigation, Clock, Gauge } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
-import { cn } from '@/src/lib/utils';
-import { Bike, ActiveTrip, TripRecord } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { Bike, ActiveTrip, TripRecord } from '@/src/types.ts';
 
 interface EndTripModalProps {
   activeTrip: ActiveTrip;
@@ -66,13 +66,15 @@ export function EndTripModal({
     if (inputMode === 'odo') {
       finalEndOdo = parseFloat(odoValue);
     } else {
-      finalEndOdo = currentOdo + parseFloat(kmValue);
+      finalEndOdo = activeTrip.startOdometer + parseFloat(kmValue);
     }
     
     finalEndOdo = Math.round(finalEndOdo * 10) / 10;
+    
+    const minValidOdo = Math.max(currentOdo, activeTrip.startOdometer);
 
-    if (isNaN(finalEndOdo) || finalEndOdo < currentOdo) {
-      alert(`Invalid reading. Must be at least ${currentOdo} KM.`);
+    if (isNaN(finalEndOdo) || finalEndOdo < minValidOdo) {
+      alert(`Invalid reading. Must be at least ${minValidOdo} KM and greater than start odometer.`);
       return;
     }
 
