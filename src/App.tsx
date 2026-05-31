@@ -61,7 +61,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/src/lib/utils';
-import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from './types';
+import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from '@/src/types';
 import { Speedometer } from '@/src/components/Speedometer';
 import { AddRecordModal } from '@/src/components/AddRecordModal';
 import { EndTripModal } from '@/src/components/TripEndModal';
@@ -71,7 +71,7 @@ import { EditTripModal } from '@/src/components/EditTripModal';
 import { RecordLapModal } from '@/src/components/LapRecordModal';
 import { LogsTab } from '@/src/components/LogsTab';
 import { TripsTab } from '@/src/components/TripsTab';
-import { useAutoTracker } from './hooks/useAutoTracker';
+import { useAutoTracker } from '@/src/hooks/useAutoTracker';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
