@@ -13,8 +13,8 @@ import {
   Edit2
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/src/lib/utils';
-import { TripRecord } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { TripRecord } from '@/src/types.ts';
 
 interface TripsTabProps {
   trips: TripRecord[];
