@@ -380,7 +380,11 @@ export function AddRecordModal({
                       className={cn("w-24 p-3 rounded-xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
                     />
                     <button 
-                      onClick={() => setMaintenanceItems(maintenanceItems.filter((_, i) => i !== index))}
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to remove this item?")) {
+                          setMaintenanceItems(maintenanceItems.filter((_, i) => i !== index));
+                        }
+                      }}
                       className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
                     >
                       <X className="w-4 h-4" />
