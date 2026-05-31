@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { cn } from '@/src/lib/utils';
+import { cn } from '@/src/lib/utils.ts';
 import { Gauge, Play, Square, Timer, MapPin, Clock, Pause, RotateCcw, Flag } from 'lucide-react';
-import { Bike, ActiveTrip } from '../types';
+import { Bike, ActiveTrip } from '@/src/types.ts';
 
 interface SpeedometerProps {
   fuelEfficiency: number;
@@ -103,9 +103,9 @@ export function Speedometer({
             <div 
               key={i} 
               className={cn(
-                "w-2 h-4 rounded-full transition-all duration-500", 
+                "w-2 h-4 rounded-[4px] transition-all duration-500", 
                 i < fuelBars 
-                  ? (fuelBars <= Math.max(1, Math.floor(capacity * 0.2)) ? "bg-red-500 animate-pulse" : "bg-orange-500") 
+                  ? (currentFuel <= (bike?.reserveCapacity || 2) ? "bg-red-500 animate-pulse" : "bg-orange-500") 
                   : (isDarkMode ? "bg-white/5" : "bg-gray-200")
               )} 
             />
@@ -138,10 +138,17 @@ export function Speedometer({
 
         {/* Predicted Range - Moved below Odometer */}
         <div className="mt-4 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 text-orange-500">
-            <MapPin className="w-4 h-4" />
-            <span className="text-xs font-bold italic">Fuel might last for approx {predictedRange} km</span>
-          </div>
+          {currentFuel <= (bike?.reserveCapacity || 2) ? (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+              <Flag className="w-4 h-4 animate-bounce" />
+              <span className="text-xs font-bold italic uppercase tracking-widest">Reserve Fuel Alert</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 text-orange-500">
+              <MapPin className="w-4 h-4" />
+              <span className="text-xs font-bold italic">Fuel might last for approx {predictedRange} km</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-500/10 text-gray-500 border border-gray-500/10">
             <Clock className="w-3 h-3" />
             <span className="text-[10px] font-black uppercase tracking-widest">Age: {bikeAge}</span>
