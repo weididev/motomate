@@ -60,18 +60,18 @@ import { format, differenceInDays, addMonths, differenceInMinutes, startOfMonth,
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import { cn } from '@/src/lib/utils';
-import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from '@/src/types';
-import { Speedometer } from '@/src/components/Speedometer';
-import { AddRecordModal } from '@/src/components/AddRecordModal';
-import { EndTripModal } from '@/src/components/TripEndModal';
-import { Onboarding } from '@/src/components/Onboarding';
-import { EditBikeModal } from '@/src/components/EditBikeModal';
-import { EditTripModal } from '@/src/components/EditTripModal';
-import { RecordLapModal } from '@/src/components/LapRecordModal';
-import { LogsTab } from '@/src/components/LogsTab';
-import { TripsTab } from '@/src/components/TripsTab';
-import { useAutoTracker } from '@/src/hooks/useAutoTracker';
+import { cn } from '@/src/lib/utils.ts';
+import { MaintenanceRecord, FuelRecord, Bike as BikeType, AccessoryRecord, TripRecord, ActiveTrip } from '@/src/types.ts';
+import { Speedometer } from '@/src/components/Speedometer.tsx';
+import { AddRecordModal } from '@/src/components/AddRecordModal.tsx';
+import { EndTripModal } from '@/src/components/TripEndModal.tsx';
+import { Onboarding } from '@/src/components/Onboarding.tsx';
+import { EditBikeModal } from '@/src/components/EditBikeModal.tsx';
+import { EditTripModal } from '@/src/components/EditTripModal.tsx';
+import { RecordLapModal } from '@/src/components/LapRecordModal.tsx';
+import { LogsTab } from '@/src/components/LogsTab.tsx';
+import { TripsTab } from '@/src/components/TripsTab.tsx';
+import { useAutoTracker } from '@/src/hooks/useAutoTracker.ts';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
