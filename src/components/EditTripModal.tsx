@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Navigation } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
-import { TripRecord } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { TripRecord } from '@/src/types.ts';
 
 interface EditTripModalProps {
   trip: TripRecord;
