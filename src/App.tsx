@@ -22,6 +22,7 @@ import {
   History,
   PhoneCall,
   Info,
+  Trash2,
   Sun,
   Moon,
   Upload,
@@ -55,7 +56,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { format, differenceInDays, addMonths, differenceInMinutes, startOfMonth, intervalToDuration } from 'date-fns';
+import { format, differenceInDays, addMonths, differenceInMinutes, startOfMonth, endOfMonth, intervalToDuration } from 'date-fns';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -70,6 +71,7 @@ import { EditTripModal } from '@/src/components/EditTripModal';
 import { RecordLapModal } from '@/src/components/LapRecordModal';
 import { LogsTab } from '@/src/components/LogsTab';
 import { TripsTab } from '@/src/components/TripsTab';
+import { useAutoTracker } from './hooks/useAutoTracker';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -78,7 +80,30 @@ export default function App() {
   // User Data State (Empty for production)
   const [bike, setBike] = useState<BikeType | null>(() => {
     const saved = localStorage.getItem('motomate_bike');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.baseOdometer === undefined) {
+          // Reconstruct baseOdometer from existing logs of previous app version
+          const savedFuel = localStorage.getItem('motomate_fuel');
+          const savedMaint = localStorage.getItem('motomate_maintenance');
+          const savedTrips = localStorage.getItem('motomate_trips');
+          
+          const fuelLogs = savedFuel ? JSON.parse(savedFuel) : [];
+          const maintLogs = savedMaint ? JSON.parse(savedMaint) : [];
+          const tripLogs = savedTrips ? JSON.parse(savedTrips) : [];
+          
+          const odoValues = [parsed.odometer || 0];
+          if (tripLogs.length > 0) odoValues.push(...tripLogs.map((t: any) => t.startOdometer));
+          if (fuelLogs.length > 0) odoValues.push(...fuelLogs.map((f: any) => f.odometer));
+          if (maintLogs.length > 0) odoValues.push(...maintLogs.map((m: any) => m.odometer));
+          
+          parsed.baseOdometer = Math.min(...odoValues);
+        }
+      }
+      return parsed;
+    }
+    return null;
   });
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(() => {
     const saved = localStorage.getItem('motomate_maintenance');
@@ -123,10 +148,55 @@ export default function App() {
   const [showInsuranceAlert, setShowInsuranceAlert] = useState(false);
   const [showDumpConfirm, setShowDumpConfirm] = useState(false);
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => localStorage.getItem('motomate_last_backup_date'));
+  const [deleteConfirmData, setDeleteConfirmData] = useState<{ id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip' } | null>(null);
 
   // Live Trip Automation
   const [liveOdometer, setLiveOdometer] = useState<number | null>(null);
   
+  // GPS Tracking Feature
+  const [autoTrackingEnabled, setAutoTrackingEnabled] = useState(() => {
+    const saved = localStorage.getItem('motomate_autotrack');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const { gpsStatus, currentSpeed } = useAutoTracker(
+    autoTrackingEnabled,
+    !!activeTrip && activeTrip.status === 'active',
+    // onStartTrip
+    () => {
+      // Create new trip automatically
+      const startOdo = liveOdometer || bike?.odometer || 0;
+      setActiveTrip({
+        startTime: new Date().toISOString(),
+        startOdometer: startOdo,
+        status: 'active',
+        type: 'Regular',
+        laps: [],
+        totalPausedMinutes: 0
+      });
+      setLiveOdometer(startOdo);
+      showToast('🚲 Movement detected. Auto-Trip Started!', 'success');
+    },
+    // onUpdateTrip
+    (distanceKm) => {
+      setLiveOdometer(prev => prev ? prev + distanceKm : (bike?.odometer || 0) + distanceKm);
+    },
+    // onStopTrip
+    () => {
+      // Only auto-stop if trip is active and running for a bit
+      if (activeTrip && activeTrip.status === 'active') {
+         setShowEndTripModal(true); // Open modal to save the trip
+         showToast('Bike stopped for 2 mins. Trip auto-paused.', 'success');
+         // We pause it automatically so the user can verify in the modal
+         setActiveTrip({ ...activeTrip, status: 'paused', lastPauseTime: new Date().toISOString() });
+      }
+    }
+  );
+
+  useEffect(() => {
+    localStorage.setItem('motomate_autotrack', JSON.stringify(autoTrackingEnabled));
+  }, [autoTrackingEnabled]);
+
   useEffect(() => {
     if (!activeTrip) {
       setLiveOdometer(null);
@@ -185,11 +255,7 @@ export default function App() {
   };
 
   const deleteRecord = (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip') => {
-    if (category === 'fuel') setFuel(prev => prev.filter(r => r.id !== id));
-    if (category === 'maintenance') setMaintenance(prev => prev.filter(r => r.id !== id));
-    if (category === 'accessory') setAccessories(prev => prev.filter(r => r.id !== id));
-    if (category === 'trip') setTrips(prev => prev.filter(r => r.id !== id));
-    showToast('Record deleted successfully', 'success');
+    setDeleteConfirmData({ id, category });
   };
 
   const editRecord = (id: string, category: 'fuel' | 'maintenance' | 'accessory' | 'trip', updatedData: any) => {
@@ -200,6 +266,19 @@ export default function App() {
       setShowAddModal(true);
     }
   };
+
+  // Auto-recalculate Global Odometer when logs change
+  useEffect(() => {
+    if (!bike) return;
+    const maxFuel = fuel.length > 0 ? Math.max(...fuel.map(f => f.odometer)) : 0;
+    const maxMaint = maintenance.length > 0 ? Math.max(...maintenance.map(m => m.odometer)) : 0;
+    const maxTrip = trips.length > 0 ? Math.max(...trips.map(t => t.endOdometer)) : 0;
+    const maxRecordsOdo = Math.max(maxFuel, maxMaint, maxTrip, bike.baseOdometer || 0);
+
+    if (bike.odometer !== maxRecordsOdo) {
+      setBike(prev => prev ? { ...prev, odometer: maxRecordsOdo } : null);
+    }
+  }, [fuel, maintenance, trips, bike]); // Safe dependency tracking with mismatch guard
 
   const startTrip = (type: 'Pickup/Drop' | 'Free Trip' | 'Regular' = 'Regular') => {
     const startOdo = bike?.odometer || 0;
@@ -448,6 +527,39 @@ export default function App() {
   const totalAccessoriesCost = useMemo(() => accessories.filter(a => !a.isMaintenancePart).reduce((acc, curr) => acc + curr.cost, 0), [accessories]);
   const totalOverallCost = totalFuelCost + totalMaintenanceCost + totalAccessoriesCost;
 
+  const currentMonthExpenses = useMemo(() => {
+    const start = startOfMonth(new Date());
+    const end = endOfMonth(new Date());
+    
+    const fuelCost = fuel
+      .filter(f => {
+        const d = new Date(f.date);
+        return d >= start && d <= end;
+      })
+      .reduce((acc, curr) => acc + curr.cost, 0);
+      
+    const maintenanceCost = maintenance
+      .filter(m => {
+        const d = new Date(m.date);
+        return d >= start && d <= end;
+      })
+      .reduce((acc, curr) => acc + curr.cost, 0);
+      
+    const accessoriesCost = accessories
+      .filter(a => {
+        const d = new Date(a.date);
+        return d >= start && d <= end;
+      })
+      .reduce((acc, curr) => acc + curr.cost, 0);
+      
+    return {
+      total: fuelCost + maintenanceCost + accessoriesCost,
+      fuel: fuelCost,
+      maintenance: maintenanceCost,
+      accessories: accessoriesCost
+    };
+  }, [fuel, maintenance, accessories]);
+
   // Smart Mileage Calculation (Full-to-Full method)
   const fuelEfficiency = useMemo(() => {
     // Ignore past imported data for mileage calculation. Only use fresh refueling.
@@ -504,7 +616,8 @@ export default function App() {
     const effectiveEfficiency = fuelEfficiency > 0 ? fuelEfficiency : 40;
     
     for (const record of sortedFuel) {
-      const dist = record.odometer - lastOdo;
+      // Ensure distance is not negative (in case of misordered or wrong entries)
+      const dist = Math.max(0, record.odometer - lastOdo);
       const consumed = dist / effectiveEfficiency;
       current = Math.max(0, current - consumed);
       
@@ -513,10 +626,14 @@ export default function App() {
       } else {
         current = Math.min(bike.fuelCapacity || 10, current + record.liters);
       }
-      lastOdo = record.odometer;
+      lastOdo = Math.max(lastOdo, record.odometer);
     }
     
-    const finalDist = (liveOdometer || bike.odometer) - lastOdo;
+    // Choose the maximum odometer to calculate final distance since last refill
+    const currentGlobalOdo = bike.odometer;
+    const latestOdo = liveOdometer ? Math.max(liveOdometer, currentGlobalOdo) : currentGlobalOdo;
+    const finalDist = Math.max(0, latestOdo - lastOdo);
+    
     const finalConsumed = finalDist / effectiveEfficiency;
     current = Math.max(0, current - finalConsumed);
     
@@ -1077,8 +1194,40 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-4 mt-8">
-                    {/* Total Expense Summary - Moved from Logs */}
+                    <div className="grid grid-cols-1 gap-4 mt-8">
+                      {/* Current Month Expense Summary */}
+                      <div className={cn(
+                        "p-6 rounded-[2.5rem] border relative overflow-hidden backdrop-blur-md",
+                        isDarkMode ? "bg-orange-500/10 border-orange-500/20" : "bg-orange-50/80 border-orange-100"
+                      )}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full -mr-16 -mt-16" />
+                        <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.3em] mb-1">This Month's Expenses</p>
+                            <h3 className="text-3xl font-black italic tracking-tighter">₹{currentMonthExpenses.total.toLocaleString()}</h3>
+                          </div>
+                          <div className="bg-orange-500/20 p-3 rounded-2xl">
+                            <CalendarDays className="w-6 h-6 text-orange-500" />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Fuel</p>
+                            <p className="text-sm font-black text-orange-500">₹{currentMonthExpenses.fuel.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Service</p>
+                            <p className="text-sm font-black text-yellow-500">₹{currentMonthExpenses.maintenance.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Extras</p>
+                            <p className="text-sm font-black text-red-500">₹{currentMonthExpenses.accessories.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total Expense Summary - Moved from Logs */}
                     <div className={cn(
                       "p-6 rounded-[2.5rem] border relative overflow-hidden backdrop-blur-md",
                       isDarkMode ? "bg-[#1E1E24]/80 border-white/5" : "bg-white/80 border-gray-100"
@@ -1318,6 +1467,37 @@ export default function App() {
                         <ChevronRight className="w-5 h-5 opacity-30" />
                       </button>
 
+                      {/* GPS Settings */}
+                      <button 
+                        onClick={() => setAutoTrackingEnabled(!autoTrackingEnabled)}
+                        className={cn(
+                          "w-full p-5 rounded-2xl flex items-center justify-between transition-all active:scale-95",
+                          isDarkMode ? "bg-white/5 hover:bg-white/10 border border-white/5" : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
+                        )}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "p-3 rounded-xl transition-colors",
+                            autoTrackingEnabled ? "bg-green-500/10" : "bg-gray-500/10"
+                          )}>
+                            <Navigation className={cn("w-5 h-5", autoTrackingEnabled ? "text-green-500" : "text-gray-500")} />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-bold flex items-center gap-2">
+                              Smart GPS Tracking
+                              {autoTrackingEnabled && <span className="bg-green-500/20 text-green-500 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Active</span>}
+                            </p>
+                            <p className="text-[10px] text-gray-500">Auto start/stop trips based on movement</p>
+                          </div>
+                        </div>
+                        <div className={cn(
+                          "w-10 h-6 rounded-full p-1 transition-colors flex",
+                          autoTrackingEnabled ? "bg-green-500 justify-end" : "bg-gray-400 justify-start"
+                        )}>
+                          <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </div>
+                      </button>
+
                       <button 
                         onClick={generateResaleReport}
                         aria-label="Generate Resale Report"
@@ -1415,6 +1595,10 @@ export default function App() {
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Developer</span>
                           <span className="font-bold">weididev</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Supported in developement</span>
+                          <span className="font-bold">S4ndu</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Last Update</span>
@@ -1527,6 +1711,56 @@ export default function App() {
               isDarkMode={isDarkMode}
               bikeAge={bikeAge}
             />
+          )}
+          {deleteConfirmData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className={cn(
+                  "w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border text-center",
+                  isDarkMode ? "bg-[#1E1E24] border-white/10 text-white" : "bg-white border-gray-100 text-gray-900"
+                )}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="p-4 bg-red-500/10 text-red-500 rounded-full mb-6">
+                    <Trash2 className="w-8 h-8 animate-pulse" />
+                  </div>
+                  <h3 className="text-xl font-black italic tracking-tighter uppercase mb-2">Delete Record</h3>
+                  <p className="text-xs text-gray-400 mb-8 uppercase tracking-widest leading-relaxed">
+                    Are you sure you want to delete this {deleteConfirmData.category} log? This action cannot be undone.
+                  </p>
+                  
+                  <div className="flex gap-4 w-full">
+                    <button 
+                      onClick={() => setDeleteConfirmData(null)}
+                      className={cn(
+                        "flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95",
+                        isDarkMode ? "border-white/10 hover:bg-white/5 text-gray-300" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                      )}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const { id, category } = deleteConfirmData;
+                        if (category === 'fuel') setFuel(prev => prev.filter(r => r.id !== id));
+                        if (category === 'maintenance') setMaintenance(prev => prev.filter(r => r.id !== id));
+                        if (category === 'accessory') setAccessories(prev => prev.filter(r => r.id !== id));
+                        if (category === 'trip') setTrips(prev => prev.filter(r => r.id !== id));
+                        
+                        setDeleteConfirmData(null);
+                        showToast('Record deleted successfully', 'success');
+                      }}
+                      className="flex-1 py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </div>
