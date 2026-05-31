@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Bike } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/src/lib/utils';
-import { Bike as BikeType } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { Bike as BikeType } from '@/src/types.ts';
 
 interface OnboardingProps {
   setBike: React.Dispatch<React.SetStateAction<BikeType | null>>;
@@ -21,17 +21,21 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
     purchaseDate: format(new Date(), 'yyyy-MM-dd'),
     odometer: 0,
     price: '',
-    fuelCapacity: 10
+    fuelCapacity: 10,
+    reserveCapacity: 2
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedOdo = Math.round((formData.odometer || 0) * 10) / 10;
     setBike({ 
       ...formData, 
       id: '1',
-      odometer: Math.round((formData.odometer || 0) * 10) / 10,
+      odometer: parsedOdo,
+      baseOdometer: parsedOdo,
       price: formData.price ? parseFloat(formData.price) : undefined,
-      fuelCapacity: formData.fuelCapacity
+      fuelCapacity: formData.fuelCapacity,
+      reserveCapacity: formData.reserveCapacity
     });
     setShowOnboarding(false);
   };
@@ -148,8 +152,23 @@ export function Onboarding({ setBike, setShowOnboarding, isDarkMode }: Onboardin
               step="0.1"
               required
               placeholder="e.g. 10"
-              value={formData.fuelCapacity || ''}
+              value={formData.fuelCapacity === 0 ? '' : formData.fuelCapacity}
               onChange={e => setFormData({...formData, fuelCapacity: parseFloat(e.target.value) || 0})}
+              className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Reserve Capacity (L)</label>
+            <input 
+              type="number" 
+              step="0.1"
+              required
+              placeholder="e.g. 2.0"
+              value={formData.reserveCapacity === 0 ? '' : formData.reserveCapacity}
+              onChange={e => setFormData({...formData, reserveCapacity: parseFloat(e.target.value) || 0})}
               className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}
             />
           </div>
