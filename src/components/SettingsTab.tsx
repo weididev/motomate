@@ -6,8 +6,8 @@ import {
   Trash2, 
   AlertTriangle 
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
-import { Bike as BikeType } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { Bike as BikeType } from '@/src/types.ts';
 
 interface SettingsTabProps {
   bike: BikeType | null;
@@ -123,6 +123,10 @@ export function SettingsTab({
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Developer</span>
           <span className="font-bold">weididev</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Supported in developement</span>
+          <span className="font-bold">S4ndu</span>
         </div>
       </div>
     </motion.div>
