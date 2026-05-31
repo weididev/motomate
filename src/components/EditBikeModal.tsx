@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Bike as BikeIcon, Clock } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
-import { Bike as BikeType } from '../types';
+import { cn } from '@/src/lib/utils.ts';
+import { Bike as BikeType } from '@/src/types.ts';
 
 interface EditBikeModalProps {
   bike: BikeType;
@@ -21,8 +21,10 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
     setBike({
       ...(formData as BikeType),
       odometer: parseFloat(odoInput) || 0,
+      baseOdometer: parseFloat(odoInput) || 0,
       price: formData.price !== undefined ? parseFloat(formData.price as any) : undefined,
       fuelCapacity: formData.fuelCapacity ? parseFloat(formData.fuelCapacity as any) : 10,
+      reserveCapacity: formData.reserveCapacity ? parseFloat(formData.reserveCapacity as any) : 2,
       manualServiceKm: formData.manualServiceKm ? parseFloat(formData.manualServiceKm as any) : undefined,
       registrationValidity: formData.registrationValidity || undefined,
       insuranceExpiry: formData.insuranceExpiry || undefined,
@@ -115,6 +117,11 @@ export function EditBikeModal({ bike, setBike, onClose, isDarkMode, bikeAge }: E
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Fuel Capacity (L)</label>
               <input type="number" step="0.1" required value={formData.fuelCapacity || ''} onChange={e => setFormData({...formData, fuelCapacity: parseFloat(e.target.value) || 0})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Reserve Capacity (L)</label>
+            <input type="number" step="0.1" required value={formData.reserveCapacity || ''} onChange={e => setFormData({...formData, reserveCapacity: parseFloat(e.target.value) || 0})} className={cn("w-full p-4 rounded-2xl text-sm font-bold border outline-none", isDarkMode ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
