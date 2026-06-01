@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Fuel, Wrench, Plus, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/src/lib/utils.ts';
-import { Bike, FuelRecord, MaintenanceRecord, AccessoryRecord } from '@/src/types.ts';
+import { cn } from '../lib/utils';
+import { Bike, FuelRecord, MaintenanceRecord, AccessoryRecord } from '../types';
 
 interface AddRecordModalProps {
   bike: Bike | null;
