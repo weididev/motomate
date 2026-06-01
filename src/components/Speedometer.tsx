@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { cn } from '@/src/lib/utils.ts';
+import { cn } from '../lib/utils';
 import { Gauge, Play, Square, Timer, MapPin, Clock, Pause, RotateCcw, Flag } from 'lucide-react';
-import { Bike, ActiveTrip } from '@/src/types.ts';
+import { Bike, ActiveTrip } from '../types';
 
 interface SpeedometerProps {
   fuelEfficiency: number;
