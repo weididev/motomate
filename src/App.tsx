@@ -1080,7 +1080,7 @@ export default function App() {
               <h1 className="text-xl font-black tracking-tighter uppercase italic">MotoMate</h1>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">System Online</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Bike Dhire Chalana</span>
               </div>
             </div>
           </div>
