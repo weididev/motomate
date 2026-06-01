@@ -6,8 +6,8 @@ import {
   Trash2, 
   AlertTriangle 
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils.ts';
-import { Bike as BikeType } from '@/src/types.ts';
+import { cn } from '../lib/utils';
+import { Bike as BikeType } from '../types';
 
 interface SettingsTabProps {
   bike: BikeType | null;
