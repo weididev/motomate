@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
-import { cn } from '@/src/lib/utils.ts';
-import { ActiveTrip } from '@/src/types.ts';
+import { cn } from '../lib/utils';
+import { ActiveTrip } from '../types';
 
 interface RecordLapModalProps {
   activeTrip: ActiveTrip;
