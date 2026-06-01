@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { X, Check, Navigation, Clock, Gauge } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
-import { cn } from '@/src/lib/utils.ts';
-import { Bike, ActiveTrip, TripRecord } from '@/src/types.ts';
+import { cn } from '../lib/utils';
+import { Bike, ActiveTrip, TripRecord } from '../types';
 
 interface EndTripModalProps {
   activeTrip: ActiveTrip;
