@@ -31,7 +31,7 @@ import {
   Legend
 } from 'recharts';
 import { format } from 'date-fns';
-import { cn } from '@/src/lib/utils.ts';
+import { cn } from '../lib/utils';
 
 interface LogsTabProps {
   filteredLogs: any[];
