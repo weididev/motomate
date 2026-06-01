@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Bike as BikeIcon, Clock } from 'lucide-react';
-import { cn } from '@/src/lib/utils.ts';
-import { Bike as BikeType } from '@/src/types.ts';
+import { cn } from '../lib/utils';
+import { Bike as BikeType } from '../types';
 
 interface EditBikeModalProps {
   bike: BikeType;
